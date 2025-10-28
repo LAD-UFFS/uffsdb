@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "memoryContext.h"
 ////
 #ifndef FMACROS // garante que macros.h não seja reincluída
    #include "macros.h"
@@ -82,7 +83,7 @@ void createDB(char *db_name) {
   	return;
   }
 
-  data_base *SGBD = (data_base*)malloc(sizeof(data_base));
+  data_base *SGBD = (data_base*)uffslloc(sizeof(data_base));
 	len = strlen(db_name);
 
 	SGBD->valid = 1;
@@ -93,16 +94,14 @@ void createDB(char *db_name) {
 	SGBD->db_directory[len+1] 	= '\0';
 	fwrite(SGBD ,sizeof(data_base), 1, DB);
 
-  aux_name_tolower = (char *)malloc(sizeof(char) * (strlen(db_name)+1)); // porque usar malloc e não um array comum: char aux_name_tolower[strlen(db_name) + 1];
+  aux_name_tolower = (char *)uffslloc(sizeof(char) * (strlen(db_name)+1)); // porque usar uffslloc e não um array comum: char aux_name_tolower[strlen(db_name) + 1];
   strcpylower(aux_name_tolower, db_name);
   strcat(create, aux_name_tolower);
-  free(aux_name_tolower);
 
 	if(system(create) == -1) {			//verifica se foi possivel criar o diretorio
 		printf("ERROR: It was not possible to create the database\n");
 	}
   else printf("CREATE DATABASE\n");
-  free(SGBD);
   fclose(DB);
 }
 
@@ -186,7 +185,7 @@ void dbInit(char *db) {
 	if(system("mkdir data > /dev/null 2>&1") == -1)
 		printf("ERROR: It was not possible to initialize uffsdb\n");
   if (db==NULL){
-    name = malloc(sizeof(char)*7);
+    name = uffsllocType(sizeof(char)*7, PERMANENT);
     name[0]='u';name[1]='f';name[2]='f';name[3]='s';
     name[4]='d';name[5]='b';name[6]=0;
   } else name=db;

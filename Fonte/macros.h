@@ -58,6 +58,8 @@
 #define DB_EXISTS 1
 #define DB_NOT_EXISTS 24
 
+#define MEMORY_CONTEXT_SIZE 16384 // 16 KB
+
 
 // Debugging macros
 #ifdef DEBUG

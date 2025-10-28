@@ -5,6 +5,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "../memoryContext.h"
 #ifndef FMACROS
    #include "../macros.h"
 #endif
@@ -44,7 +45,7 @@ rc_parser GLOBAL_PARSER;
 void connect(char *nome) {
   int r = connectDB(nome);
 	if (r == SUCCESS) {
-    connected.db_name = malloc(sizeof(char)*((strlen(nome)+1)));
+    connected.db_name = uffsllocType(sizeof(char)*((strlen(nome)+1)), PERMANENT);
     strcpylower(connected.db_name, nome);
     connected.conn_active = 1;
     printf("You are now connected to database \"%s\" as user \"uffsdb\".\n", nome);
@@ -60,6 +61,7 @@ void invalidCommand(char *command) {
 
 void quit(int flag){
     write_history("data/history.txt");
+    destroyMemoryContext();
     exit(flag);
 };
 
@@ -68,7 +70,7 @@ void notConnected() {
 }
 
 void adcTabelaQuery(char *nome, char type){
-  QUERY.tabela = malloc(strlen(nome)*sizeof(char));
+  QUERY.tabela = uffslloc(strlen(nome)*sizeof(char));
   strcpy(QUERY.tabela,nome);
   QUERY.queryType = type;
 }
@@ -83,7 +85,7 @@ void adcTokenWhere(char *token,int id){
 }
 
 void adcProjSelect(char *col){
-  char *str = malloc(sizeof(char)*strlen(col));
+  char *str = uffslloc(sizeof(char)*strlen(col));
   strcpy(str,col);
   if(!QUERY.proj) QUERY.proj = novaLista(NULL);
   adcNodo(QUERY.proj, QUERY.proj->ult, (void *)str);
@@ -91,7 +93,7 @@ void adcProjSelect(char *col){
 
 void setObjName(char **nome) {
     if (GLOBAL_PARSER.mode != 0) {
-        GLOBAL_DATA.objName = malloc(sizeof(char)*((strlen(*nome)+1)));
+        GLOBAL_DATA.objName = uffslloc(sizeof(char)*((strlen(*nome)+1)));
         strcpylower(GLOBAL_DATA.objName, *nome);
         GLOBAL_DATA.objName[strlen(*nome)] = '\0';
         GLOBAL_PARSER.step++;
@@ -99,9 +101,9 @@ void setObjName(char **nome) {
 }
 
 void setColumnInsert(char **nome) {
-    GLOBAL_DATA.columnName = realloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.columnName = uffsRealloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
 
-    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = malloc(sizeof(char)*(strlen(*nome)+1));
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char)*(strlen(*nome)+1));
     strcpylower(GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count], *nome);
     GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count][strlen(*nome)] = '\0';
 
@@ -110,11 +112,11 @@ void setColumnInsert(char **nome) {
 
 void setValueInsert(char *nome, char type) {
     int i;
-    GLOBAL_DATA.values  = realloc(GLOBAL_DATA.values, (GLOBAL_PARSER.val_count+1)*sizeof(char *));
-    GLOBAL_DATA.type    = realloc(GLOBAL_DATA.type, (GLOBAL_PARSER.val_count+1)*sizeof(char));
+    GLOBAL_DATA.values  = uffsRealloc(GLOBAL_DATA.values, (GLOBAL_PARSER.val_count+1)*sizeof(char *));
+    GLOBAL_DATA.type    = uffsRealloc(GLOBAL_DATA.type, (GLOBAL_PARSER.val_count+1)*sizeof(char));
 
     // Adiciona o valor no vetor de strings
-    GLOBAL_DATA.values[GLOBAL_PARSER.val_count] = malloc(sizeof(char)*(strlen(nome)+1));
+    GLOBAL_DATA.values[GLOBAL_PARSER.val_count] = uffslloc(sizeof(char)*(strlen(nome)+1));
     if (type == 'I' || type == 'D') {
         strcpy(GLOBAL_DATA.values[GLOBAL_PARSER.val_count], nome);
         GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)] = '\0';
@@ -131,17 +133,17 @@ void setValueInsert(char *nome, char type) {
 }
 
 void setColumnCreate(char **nome) {
-    GLOBAL_DATA.columnName  = realloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
-    GLOBAL_DATA.attribute   = realloc(GLOBAL_DATA.attribute, (GLOBAL_PARSER.col_count+1)*sizeof(int));
-    GLOBAL_DATA.fkColumn    = realloc(GLOBAL_DATA.fkColumn, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
-    GLOBAL_DATA.fkTable     = realloc(GLOBAL_DATA.fkTable, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
-    GLOBAL_DATA.values      = realloc(GLOBAL_DATA.values, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
-    GLOBAL_DATA.type        = realloc(GLOBAL_DATA.type, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.columnName  = uffsRealloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.attribute   = uffsRealloc(GLOBAL_DATA.attribute, (GLOBAL_PARSER.col_count+1)*sizeof(int));
+    GLOBAL_DATA.fkColumn    = uffsRealloc(GLOBAL_DATA.fkColumn, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.fkTable     = uffsRealloc(GLOBAL_DATA.fkTable, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.values      = uffsRealloc(GLOBAL_DATA.values, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.type        = uffsRealloc(GLOBAL_DATA.type, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
 
-    GLOBAL_DATA.values[GLOBAL_PARSER.col_count] = malloc(sizeof(char));
-    GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count] = malloc(sizeof(char));
-    GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count] = malloc(sizeof(char));
-    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = malloc(sizeof(char)*(strlen(*nome)+1));
+    GLOBAL_DATA.values[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char));
+    GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char));
+    GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char));
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char)*(strlen(*nome)+1));
 
     strcpylower(GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count], *nome);
 
@@ -159,7 +161,7 @@ void setColumnTypeCreate(char type){
 }
 
 void setColumnSizeCreate(char *size){
-  GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1] = realloc(GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(size)+1));
+  GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1] = uffsRealloc(GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(size)+1));
   strcpy(GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1], size);
   GLOBAL_DATA.values[GLOBAL_PARSER.col_count-1][strlen(size)] = '\0';
 }
@@ -169,13 +171,13 @@ void setColumnPKCreate() {
 }
 
 void setColumnBtreeCreate(char **nome) {
-    GLOBAL_DATA.columnName = realloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char*));
-    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = malloc(sizeof(char)*(strlen(*nome)+1));
+    GLOBAL_DATA.columnName = uffsRealloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char*));
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char)*(strlen(*nome)+1));
     strcpylower(GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count], *nome);
 }
 
 void setColumnFKTableCreate(char **nome) {
-    GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1] = realloc(GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(*nome)+1));
+    GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1] = uffsRealloc(GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(*nome)+1));
     strcpylower(GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1], *nome);
     GLOBAL_DATA.fkTable[GLOBAL_PARSER.col_count-1][strlen(*nome)] = '\0';
     GLOBAL_DATA.attribute[GLOBAL_PARSER.col_count-1] = FK;
@@ -183,7 +185,7 @@ void setColumnFKTableCreate(char **nome) {
 }
 
 void setColumnFKColumnCreate(char **nome) {
-    GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1] = realloc(GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(*nome)+1));
+    GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1] = uffsRealloc(GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1], sizeof(char)*(strlen(*nome)+1));
     strcpylower(GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1], *nome);
     GLOBAL_DATA.fkColumn[GLOBAL_PARSER.col_count-1][strlen(*nome)] = '\0';
     GLOBAL_PARSER.step++;
@@ -193,17 +195,15 @@ void limparLista(Lista *l){
   Nodo *k = l->prim,*j;
   while(k){
     j = k->prox;
-    free( rmvNodoPtr(l,k) );
+    rmvNodoPtr(l,k);
     k = j;
   }
   l->prim = l->ult = NULL;
-  free(l);
 }
 
 void resetQuery() {
     if(getMode() == OP_SELECT || getMode() == OP_DELETE) {
         if(QUERY.tabela) {
-            free(QUERY.tabela);
             QUERY.tabela = NULL;
         }
         if(QUERY.tok) limparLista(QUERY.tok);
@@ -214,41 +214,19 @@ void resetQuery() {
 }
 
 void clearGlobalStructs() {
-    int i;
     resetQuery();
     if (GLOBAL_DATA.objName) {
-        free(GLOBAL_DATA.objName);
         GLOBAL_DATA.objName = NULL;
     }
 
-    for (i = 0; i < GLOBAL_DATA.N; i++ ) {
-        if (GLOBAL_DATA.columnName)
-            free(GLOBAL_DATA.columnName[i]);
-        if (GLOBAL_DATA.values)
-            free(GLOBAL_DATA.values[i]);
-        if (GLOBAL_DATA.fkTable)
-            free(GLOBAL_DATA.fkTable[i]);
-        if (GLOBAL_DATA.fkColumn)
-            free(GLOBAL_DATA.fkColumn[i]);
-    }
-
-    free(GLOBAL_DATA.columnName);
     GLOBAL_DATA.columnName = NULL;
-
-    free(GLOBAL_DATA.values);
     GLOBAL_DATA.values = NULL;
-
-    free(GLOBAL_DATA.fkTable);
     GLOBAL_DATA.fkTable = NULL;
-
-    free(GLOBAL_DATA.fkColumn);
     GLOBAL_DATA.fkColumn = NULL;
 
-    free(GLOBAL_DATA.type);
-    GLOBAL_DATA.type = (char *)malloc(sizeof(char));
+    GLOBAL_DATA.type = (char *)uffslloc(sizeof(char));
 
-    free(GLOBAL_DATA.attribute);
-    GLOBAL_DATA.attribute = (int *)malloc(sizeof(int));
+    GLOBAL_DATA.attribute = (int *)uffslloc(sizeof(int));
 
     yylex_destroy();
 
@@ -391,6 +369,7 @@ int interface() {
             pthread_join(pth, NULL);
         }
     
+        uffsFree(TEMPORARY);
     }
     return 0;
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "memoryContext.h"
 ////
 #ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
    #include "btree.h"
@@ -16,11 +17,11 @@ void decnTuplas()
 
 nodo* criaNodo() {
 	nodo * novo = NULL;
-	novo = (nodo*)malloc(sizeof(nodo));
+	novo = (nodo*)uffslloc(sizeof(nodo));
 	novo->filhos = NULL;
 	novo->pai = novo->prox = novo->ant = NULL;
-	novo->data = (char**)malloc(ordem * sizeof(char*));
-	novo->endereco = (long int*)malloc(ordem * sizeof(long int));
+	novo->data = (char**)uffslloc(ordem * sizeof(char*));
+	novo->endereco = (long int*)uffslloc(ordem * sizeof(long int));
 	novo->quant_data = 0;
 	return novo;
 }
@@ -49,7 +50,7 @@ void imprime(nodo* n) {
 //recebe o nome de uma tabela, concatena a extensão .dat e retorna essa junção.
 char* concatena_extensao(char* nomeTabela) {
 	char *concatena;
-	concatena = (char*)malloc(sizeof(char)*(strlen(nomeTabela) + strlen(".dat")+1));
+	concatena = (char*)uffslloc(sizeof(char)*(strlen(nomeTabela) + strlen(".dat")+1));
 	strcpy(concatena,nomeTabela);
 	strcat(concatena,".dat");
 	return concatena;
@@ -62,7 +63,6 @@ int inicializa_indice(char* nomeTabela){
 	char* nomeArquivo = concatena_extensao(nomeTabela);
 	new_indice = fopen(nomeArquivo, "a");
 	fwrite(&arroba, sizeof(char), 1, new_indice);
-	free(nomeArquivo);
 	if(new_indice == NULL) return 0;
 	fclose(new_indice);
 	return 1;
@@ -78,7 +78,7 @@ int cmpstr (const void *a, const void *b){
 /* Insere os valores da chave (ind) e do endereço da tupla no arquivo de dados
  * (end) em um nodo (n) */
 nodo* insereChaveEmNodoFolha(char* ind, long int end, nodo *n){
-	n->data[n->quant_data] = (char *)malloc((strlen(ind)+1) * sizeof(char));
+	n->data[n->quant_data] = (char *)uffslloc((strlen(ind)+1) * sizeof(char));
 	strcpy(n->data[n->quant_data], ind);
 	n->endereco[n->quant_data] = end;
 	n->quant_data++;
@@ -89,10 +89,10 @@ nodo* insereChaveEmNodoFolha(char* ind, long int end, nodo *n){
 
 /* Insere unicamente o valor da chave em um nodo interno (n) */
 nodo* insereChaveEmNodoInterno(char* ind, nodo* n) {
-	n->data[n->quant_data] = (char *)malloc((strlen(ind)+1) * sizeof(char));
+	n->data[n->quant_data] = (char *)uffslloc((strlen(ind)+1) * sizeof(char));
 	strcpy(n->data[n->quant_data], ind);
 	n->quant_data++;
-	n->filhos = (nodo**)realloc(n->filhos, sizeof(nodo**) * (n->quant_data+1)); //aumenta o numero de ponteiros para filhos
+	n->filhos = (nodo**)uffsRealloc(n->filhos, sizeof(nodo**) * (n->quant_data+1)); //aumenta o numero de ponteiros para filhos
 	return n;
 }
 
@@ -154,14 +154,9 @@ void destroi_arvore(nodo* n) {
 		for(i = 0; i < n->quant_data; i++)
 			destroi_arvore(n->filhos[i]);
 	}
-	free(n->data);
 	if(n->prox) { //se é nodo folha
 		n->prox->ant = NULL;
-		free(n->endereco);
-	} else { //se é nodo interno
-		free(n->filhos);
-	}
-	free(n);
+	} 
 }
 
 //constrói uma b+ dado o nome da tabela; retorna o nodo raiz
@@ -179,7 +174,6 @@ nodo* constroi_bplus(char* nomeTabela){
 
 	char* nomeArquivo = concatena_extensao(nomeTabela);
 	new = fopen(nomeArquivo,"r");
-	free(nomeArquivo);
 	if(!new){
 		printf("Erro de abertura de arquivo\n");
 		fclose(new);
@@ -200,15 +194,15 @@ nodo* constroi_bplus(char* nomeTabela){
 	fseek(new,0,SEEK_SET);
 
 	while(1){
-		palavra = (char*)malloc(sizeof(char));
+		palavra = (char*)uffslloc(sizeof(char));
 		while(le != '$'){
 			fread(&le, sizeof(char),1,new);
 			if(le != '$') {
-				palavra = (char *) realloc(palavra, (++cont) * sizeof(char));
+				palavra = (char *) uffsRealloc(palavra, (++cont) * sizeof(char));
 				palavra[cont-1] = le;
 			}
 		}
-		palavra = (char *) realloc(palavra, (++cont) * sizeof(char));
+		palavra = (char *) uffsRealloc(palavra, (++cont) * sizeof(char));
 		palavra[cont-1] = '\0';
 		cont = 0;
 		fread(&le2, sizeof(long int), 1, new); //lê o endereço
@@ -253,7 +247,7 @@ nodo* constroi_bplus(char* nomeTabela){
 						aux = aux->pai;
 						aux5->pai = aux2->pai;
 						aux2 = aux2->pai;
-						palavra = (char *)realloc(palavra, sizeof(char)*strlen(aux->data[aux->quant_data-1]));
+						palavra = (char *)uffsRealloc(palavra, sizeof(char)*strlen(aux->data[aux->quant_data-1]));
 						strcpy(palavra, aux->data[aux->quant_data-1]);
 						aux->quant_data--;
 					}
@@ -268,7 +262,6 @@ nodo* constroi_bplus(char* nomeTabela){
 				flag = 0;
 			}
 		}
-		free(palavra);
 		if(aux4)aux = aux4;
 		while (aux->prox) aux = aux->prox;
 		fread(&le, sizeof(char), 1, new);// tenta ler o fim do arquivo
@@ -292,7 +285,6 @@ void insere_arquivo(nodo* inicio, char* nomeTabela){
 	FILE * new = NULL;
 	char* nomeArquivo = concatena_extensao(nomeTabela);
 	new = fopen(nomeArquivo,"w");
-	free(nomeArquivo);
 	if(!new){
 		printf("Erro de abertura de arquivo\n");
 		return;

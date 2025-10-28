@@ -2,19 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "memoryContext.h"
 #ifndef FUTILITY
    #include "Utility.h"
 #endif
 
 Nodo *novoNodo(void *inf){
-  Nodo *novo = malloc(sizeof(Nodo));
+  Nodo *novo = uffslloc(sizeof(Nodo));
   novo->inf = inf;
   novo->ant = novo->prox = NULL;
   return novo;
 }
 
 Lista *novaLista(int (*cmp)(void *inf1,void *inf2)){
-  Lista *l = malloc(sizeof(Lista));
+  Lista *l = uffslloc(sizeof(Lista));
   if(!l){
     printf("Impossivel alocar lista!\n");
     return NULL;
@@ -63,7 +64,7 @@ void *rmvNodoPtr(Lista *l,Nodo *i){
     i->prox->ant = i->ant;
   }
   void *rinf = i->inf;
-  free(i); i = NULL;
+  i = NULL;
   l->tam--;
   return rinf;
 }
@@ -76,7 +77,7 @@ Nodo *busca(Lista *l,void *inf){
 }
 
 Pilha *novaPilha(){
-  Pilha *p = malloc(sizeof(Pilha));
+  Pilha *p = uffslloc(sizeof(Pilha));
   p->tam = 0;
   p->topo = NULL;
   return p;
@@ -98,7 +99,6 @@ void *pop(Pilha *p){
   p->topo = k->prox;
   if(p->topo) p->topo->ant = NULL;
   p->tam--;
-  free(k);
   return inf;
 }
 

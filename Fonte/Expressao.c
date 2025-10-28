@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "memoryContext.h"
 #ifndef FMACROS
    #include "macros.h"
 #endif
@@ -44,16 +45,14 @@ void limparExpNodos(Lista *l){
 }
 
 void limparExpNodosInf(Lista *l){
-  for(Nodo *k = l->prim,*j; k; k = j){
-    inf_where *kw = (inf_where *)(k->inf);
-    if (kw->token != COLUNA_NULL) {
-      free(kw->token); kw->token = NULL;
+    for(Nodo *k = l->prim,*j; k; k = j){
+        inf_where *kw = (inf_where *)(k->inf);
+        if (kw->token != COLUNA_NULL) kw->token = NULL;
+        kw = NULL;
+        j = k->prox;
+        rmvNodoPtr(l,k);
     }
-    free(kw); kw = NULL;
-    j = k->prox;
-    rmvNodoPtr(l,k);
-  }
-  l->prim = l->ult = NULL;
+    l->prim = l->ult = NULL;
 }
 
 char buscaTipoObjecto(inf_where *iw,tupla *tuple){
@@ -96,7 +95,7 @@ Lista *resArit(Lista *l,tupla *tuple){
     }
     aritPosfixa(op, tuple ,novaExp);
     limparExpNodos(op);
-    free(op); op = NULL;
+    op = NULL;
     return novaExp;
 }
 
@@ -134,9 +133,9 @@ void aritPosfixa(Lista *l,tupla *tuple,Lista *novaExp){
 
     while(fechap--) adcNodo(novaExp,novaExp->ult,
                             (void *)novoTokenWhere(")",FECHA_PARENT));
-    free(p); p = NULL;
+    p = NULL;
     limparExpNodosInf(pos);
-    free(pos); pos = NULL;
+    pos = NULL;
 }
 
 inf_where *opArit(Lista *l,tupla *tuple){
@@ -177,7 +176,7 @@ inf_where *opArit(Lista *l,tupla *tuple){
     }
   }
   inf_where *iw = pop(p);
-  free(p); p = NULL;
+    p = NULL;
   return iw;
 }
 
@@ -187,18 +186,15 @@ void substitui(Lista *l,tupla *tuple){
     //substituindo as colunas do where pelo seu valor na tupla
     if(iw->id == OBJETO){
       column *c = buscaColuna(tuple,(char *)(iw->token));
-      free(iw->token);
       iw->token = converter(c->tipoCampo,c->valorCampo);
       if(iw->token == COLUNA_NULL) iw->id = NULLA;
       else if(c->tipoCampo == 'S' || c->tipoCampo == 'C') iw->id = STRING;
       else if(c->tipoCampo == 'I' || c->tipoCampo == 'D') iw->id = VALUE_NUMBER;
     }
     else if(iw->id == VALUE_NUMBER){//todo inteiro vai pra double.
-      void *tk = iw->token;
-      double *num = malloc(sizeof(double));
+      double *num = uffslloc(sizeof(double));
       *num = atof((char *)(iw->token));
       iw->token = (void *)num;
-      free(tk); tk = NULL;
     }
   }
 }
@@ -213,7 +209,7 @@ column *buscaColuna(tupla *tuple, char *str){
 void *converter(char tipo,char* valor){
     if(valor == COLUNA_NULL) return COLUNA_NULL;
     if(tipo == 'S' || tipo == 'C'){
-        char *str = malloc(sizeof(char)*strlen(valor)+3);
+        char *str = uffslloc(sizeof(char)*strlen(valor)+3);
         str[0] = '\0'; //não retire.
         strcat(str,"'");
         strcat(str,valor);
@@ -221,7 +217,7 @@ void *converter(char tipo,char* valor){
         return (void *)str;
     }
 
-    double *num = malloc(sizeof(double));
+    double *num = uffslloc(sizeof(double));
     if(tipo == 'I') *num = (*((int *)valor))*1.0;
     else *num = *(double *)valor;
     
@@ -230,65 +226,64 @@ void *converter(char tipo,char* valor){
 
 //daqui pra baixo relações
 Lista *relacoes(Lista *l){
-  Pilha *p = novaPilha();
-  Lista *r = novaLista(NULL);
-  for(Nodo *i = l->prim; i; i = i->prox){
-    inf_where *iw = (inf_where *)(i->inf);
-    if(iw->id == ABRE_PARENT || iw->id == LOGICO)
-      adcNodo(r,r->ult,(void *)novoResWhere(iw->token,iw->id));
-    else if(iw->id == FECHA_PARENT){
-      if(((inf_where *)(r->ult->inf))->id != ABRE_PARENT)
-        adcNodo(r,r->ult,(void *)novoResWhere(iw->token,iw->id));
-      else{
-        inf_where *rw = (inf_where *)r->ult;
-        free(rw->token); rw->token = NULL;
-        free(rw); rw = NULL;
-        rmvNodoPtr(r,r->ult);
-      }
+    Pilha *p = novaPilha();
+    Lista *r = novaLista(NULL);
+    for(Nodo *i = l->prim; i; i = i->prox){
+        inf_where *iw = (inf_where *)(i->inf);
+        if(iw->id == ABRE_PARENT || iw->id == LOGICO)
+            adcNodo(r,r->ult,(void *)novoResWhere(iw->token,iw->id));
+        else if(iw->id == FECHA_PARENT){
+            if(((inf_where *)(r->ult->inf))->id != ABRE_PARENT)
+                adcNodo(r,r->ult,(void *)novoResWhere(iw->token,iw->id));
+            else{
+                inf_where *rw = (inf_where *)r->ult;
+                rw->token = NULL;
+                rw = NULL;
+                rmvNodoPtr(r,r->ult);
+            }
+        }
+        else if((iw->id == VALUE_NUMBER || iw->id == STRING || iw->id == NULLA) && p->tam == 2){
+            inf_where *oper = pop(p);
+            inf_where *op = pop(p);
+            char val = 0;
+            char *oper2 = (char *)(oper->token);
+            if (op->id == NULLA || iw->id == NULLA)  val = 0;
+            else if(!strcmp(oper2,">")){
+                if(op->id == STRING)
+                val = strcmp((char *)(op->token), (char *)(iw->token)) > 0;
+                else val = (*(double *)(op->token) > *(double *)(iw->token));
+            }
+            else if(!strcmp(oper2,">=")){
+                if(op->id == STRING)
+                val = strcmp((char *)(op->token), (char *)(iw->token)) >= 0;
+                else val = (*(double *)(op->token) >= *(double *)(iw->token));
+            }
+            else if(!strcmp(oper2,"<")){
+                if(op->id == STRING)
+                val = strcmp((char *)(op->token), (char *)(iw->token)) < 0;
+                else val = (*(double *)(op->token) < *(double *)(iw->token));
+            }
+            else if(!strcmp(oper2,"<=")){
+                if(op->id == STRING)
+                val = strcmp((char *)(op->token), (char *)(iw->token)) <= 0;
+                else val = (*(double *)(op->token) <= *(double *)(iw->token));
+            }
+            else if(!strcmp(oper2,"=")){
+                if(op->id == STRING)
+                val = !strcmp((char *)(op->token), (char *)(iw->token));
+                else val = (*(double *)(op->token) == *(double *)(iw->token));
+            }
+            else if(!strcmp(oper2,"!=")){
+                if(op->id == STRING)
+                    val = strcmp((char *)(op->token), (char *)(iw->token));
+                else val = (*(double *)(op->token) != *(double *)(iw->token));
+            }
+            adcNodo(r,r->ult,(void *)novoResWhere(&val,BOOLEANO));
+        }
+        else push(p,(void *)iw);
     }
-    else if((iw->id == VALUE_NUMBER || iw->id == STRING || iw->id == NULLA)
-            && p->tam == 2){
-      inf_where *oper = pop(p);
-      inf_where *op = pop(p);
-      char val = 0;
-      char *oper2 = (char *)(oper->token);
-      if (op->id == NULLA || iw->id == NULLA)  val = 0;
-      else if(!strcmp(oper2,">")){
-        if(op->id == STRING)
-          val = strcmp((char *)(op->token), (char *)(iw->token)) > 0;
-        else val = (*(double *)(op->token) > *(double *)(iw->token));
-      }
-      else if(!strcmp(oper2,">=")){
-        if(op->id == STRING)
-          val = strcmp((char *)(op->token), (char *)(iw->token)) >= 0;
-        else val = (*(double *)(op->token) >= *(double *)(iw->token));
-      }
-      else if(!strcmp(oper2,"<")){
-        if(op->id == STRING)
-          val = strcmp((char *)(op->token), (char *)(iw->token)) < 0;
-        else val = (*(double *)(op->token) < *(double *)(iw->token));
-      }
-      else if(!strcmp(oper2,"<=")){
-        if(op->id == STRING)
-          val = strcmp((char *)(op->token), (char *)(iw->token)) <= 0;
-        else val = (*(double *)(op->token) <= *(double *)(iw->token));
-      }
-      else if(!strcmp(oper2,"=")){
-        if(op->id == STRING)
-          val = !strcmp((char *)(op->token), (char *)(iw->token));
-        else val = (*(double *)(op->token) == *(double *)(iw->token));
-      }
-      else if(!strcmp(oper2,"!=")){
-        if(op->id == STRING)
-            val = strcmp((char *)(op->token), (char *)(iw->token));
-        else val = (*(double *)(op->token) != *(double *)(iw->token));
-      }
-      adcNodo(r,r->ult,(void *)novoResWhere(&val,BOOLEANO));
-    }
-    else push(p,(void *)iw);
-  }
-  free(p); p = NULL;
-  return r;
+    p = NULL;
+    return r;
 }
 
 //daqui pra baixo operações lógicas
@@ -314,27 +309,27 @@ char logPosfixa(Lista *l){
       while(p->tam && (iw = (inf_where *)pop(p))->id != ABRE_PARENT)
         adcNodo(pos,pos->ult,(void *)iw);
   }
-  while(p->tam) adcNodo(pos,pos->ult,pop(p));
-  free(p); p = NULL;
-  char r = opLog(pos);
-  limparExpNodos(pos);
-  free(pos); pos = NULL;
-  return r;
+    while(p->tam) adcNodo(pos,pos->ult,pop(p));
+    p = NULL;
+    char r = opLog(pos);
+    limparExpNodos(pos);
+    pos = NULL;
+    return r;
 }
 
 char opLog(Lista *l){
-  Pilha *p = novaPilha();
-  for(Nodo *i = l->prim; i; i = i->prox){
-    inf_where *iw = (inf_where *)(i->inf);
-    if(iw->id == BOOLEANO) push(p,i->inf);
-    else{
-      inf_where *v1 = (inf_where *)pop(p);
-      char *dest = (char *)((inf_where *)topo(p))->token;
-      if(precedLog(iw->token)) *dest &= *((char *)(v1->token));
-      else *dest |= *((char *)(v1->token));
+    Pilha *p = novaPilha();
+    for(Nodo *i = l->prim; i; i = i->prox){
+        inf_where *iw = (inf_where *)(i->inf);
+        if(iw->id == BOOLEANO) push(p,i->inf);
+        else{
+            inf_where *v1 = (inf_where *)pop(p);
+            char *dest = (char *)((inf_where *)topo(p))->token;
+            if(precedLog(iw->token)) *dest &= *((char *)(v1->token));
+            else *dest |= *((char *)(v1->token));
+        }
     }
-  }
-  char r = *((char *)(((inf_where *)pop(p))->token ));
-  free(p); p = NULL;
-  return r;
+    char r = *((char *)(((inf_where *)pop(p))->token ));
+    p = NULL;
+    return r;
 }

@@ -1,8 +1,9 @@
-#ifndef FFUTILITY
-  #include "Utility.h"
-#endif
+#pragma once
 
-#include "base.h"
+#include "Utility.h"
+#include "int.h"
+#include <stdint.h>
+#include "macros.h"
 
 #define FTYPES 1 // flag para identificar se types.h já foi incluída
 
@@ -109,6 +110,28 @@ typedef struct fs_constraint {
     byte constraintType; // Tipo de restrição (PK, FK, NPK)
     byte deltype; // Tipo de deleção (CASCADE, SET NULL, RESTRICT)
 } fs_constraint;
+
+typedef enum {
+   TEMPORARY,
+   PERMANENT
+} MemoryContextType;
+
+typedef struct MemoryContext {
+   MemoryContextType type;
+   char memoryPool[MEMORY_CONTEXT_SIZE];
+   uint used;
+   struct MemoryContext *next;
+} MemoryContext;
+
+typedef struct MemoryContextRoot {
+   struct MemoryContext *temporary, *permanent;
+} MemoryContextRoot;
+
+
+typedef struct {
+    size_t size;
+    char data[FLEXIBLE_ARRAY];
+} uffs_mem_header;
 
 // Union's utilizados na conversão de variáveis do tipo inteiro e double.
 

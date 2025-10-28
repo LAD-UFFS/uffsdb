@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "memoryContext.h"
 #ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
    #include "btree.h"
 #endif
@@ -88,16 +89,10 @@ int existeAtributo(char *nomeTabela, column *c){
             }
         }
         if(count != objeto.qtdCampos){
-            free(pagina);
-            free(bufferpoll);
-            free(tabela);
             return ERRO_DE_PARAMETRO;
         }
     }
 
-    free(pagina);
-    free(bufferpoll);
-    free(tabela);
     return SUCCESS;
 }
 //////
@@ -105,7 +100,7 @@ int verificaNomeTabela(char *nomeTabela) {
     if(strlen(nomeTabela) > TAMANHO_NOME_TABELA) return 0;
 
     FILE *dicionario;
-    char *tupla = (char *)malloc(sizeof(char)*TAMANHO_NOME_TABELA);
+    char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -113,7 +108,6 @@ int verificaNomeTabela(char *nomeTabela) {
 
 
     if((dicionario = fopen(directory,"a+b")) == NULL){
-        free(tupla);
         return ERRO_ABRIR_ARQUIVO;
     }
 
@@ -123,7 +117,6 @@ int verificaNomeTabela(char *nomeTabela) {
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario); //Lê somente o nome da tabela
 
         if(objcmp(tupla, nomeTabela) == 0){ // Verifica se o nome dado pelo usuario existe no dicionario de dados.
-            free(tupla);
             fclose(dicionario);
             return 1;
         }
@@ -132,7 +125,6 @@ int verificaNomeTabela(char *nomeTabela) {
     }
 
     fclose(dicionario);
-    free(tupla);
 
     return 0;
 }
@@ -196,9 +188,9 @@ char retornaTamanhoTipoDoCampo(char *nomeCampo, table  *tab) {
 tp_table *procuraAtributoFK(struct fs_objects objeto){
     FILE *schema;
     int cod = 0, chave, i = 0;
-    char *tupla = (char *)malloc(sizeof(char) * 109);
-    tp_table *esquema = (tp_table *)malloc(sizeof(tp_table)*objeto.qtdCampos);
-    tp_table *vetEsqm = (tp_table *)malloc(sizeof(tp_table)*objeto.qtdCampos);
+    char *tupla = (char *)uffslloc(sizeof(char) * 109);
+    tp_table *esquema = (tp_table *)uffslloc(sizeof(tp_table)*objeto.qtdCampos);
+    tp_table *vetEsqm = (tp_table *)uffslloc(sizeof(tp_table)*objeto.qtdCampos);
     memset(vetEsqm, 0, sizeof(tp_table)*objeto.qtdCampos);
     memset(esquema, 0, sizeof(tp_table)*objeto.qtdCampos);
 
@@ -207,11 +199,8 @@ tp_table *procuraAtributoFK(struct fs_objects objeto){
     strcat(directory, "fs_schema.dat");
 
     if((schema = fopen(directory, "a+b")) == NULL){
-      printf("ERROR: could not read schema.\n");
-      free(tupla);
-		  free(esquema);
-		  free(vetEsqm);
-      return ERRO_ABRIR_ESQUEMA;
+        printf("ERROR: could not read schema.\n");
+        return ERRO_ABRIR_ESQUEMA;
     }
 
     while((fgetc (schema) != EOF) && i < objeto.qtdCampos){ // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
@@ -244,9 +233,6 @@ tp_table *procuraAtributoFK(struct fs_objects objeto){
             }
         }
     }
-    free(tupla);
-	free(esquema);
-
 	fclose(schema);
 
     return vetEsqm;
@@ -255,7 +241,7 @@ tp_table *procuraAtributoFK(struct fs_objects objeto){
 
 struct fs_objects leObjetoById(int idTabela){
     FILE *dicionario;
-    char *tupla = (char *)malloc(sizeof(char)*TAMANHO_NOME_TABELA);
+    char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int cod, qtdCampos, qtdIndice;
 
@@ -269,7 +255,6 @@ struct fs_objects leObjetoById(int idTabela){
 
     if (dicionario == NULL) {
         printf("ERROR: data dictionary was not found.\n\n");
-        free(tupla);
         return objeto;
     }
 
@@ -291,12 +276,10 @@ struct fs_objects leObjetoById(int idTabela){
             objeto.qtdCampos = qtdCampos;
       		objeto.qtdIndice = qtdIndice;
 
-            free(tupla);
             fclose(dicionario);
             return objeto;
         }
     }
-    free(tupla);
     fclose(dicionario);
 
     return objeto;
@@ -305,7 +288,7 @@ struct fs_objects leObjetoById(int idTabela){
 struct fs_objects leObjeto(char *nomeTabela) {
 
     FILE *dicionario;
-    char *tupla = (char *)malloc(sizeof(char)*TAMANHO_NOME_TABELA);
+    char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int cod;
     int i = 0;
@@ -322,14 +305,12 @@ struct fs_objects leObjeto(char *nomeTabela) {
         printf("ERROR: relation \"%s\" was not found.\n", nomeTabela);
         if (dicionario)
             fclose(dicionario);
-        free(tupla);
 
         return objeto;
     }
 
     if (dicionario == NULL) {
         printf("ERROR: data dictionary was not found.\n\n");
-        free(tupla);
         return objeto;
     }
 
@@ -350,13 +331,11 @@ struct fs_objects leObjeto(char *nomeTabela) {
       			fread(&i,sizeof(int),1,dicionario);
       			objeto.qtdIndice = i;
 
-            free(tupla);
             fclose(dicionario);
             return objeto;
         }
         fseek(dicionario, 32, 1); // Pula a quantidade de caracteres para a proxima verificacao(4B do codigo, 20B do nome do arquivo e 4B da quantidade de campos).
     }
-    free(tupla);
     fclose(dicionario);
 
     return objeto;
@@ -367,19 +346,18 @@ struct fs_objects leObjeto(char *nomeTabela) {
 tp_table *leSchema (struct fs_objects objeto){
     FILE *schema;
     int i = 0, cod = 0;
-    char *tupla = (char *)malloc(sizeof(char)*TAMANHO_NOME_CAMPO);
+    char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_CAMPO);
     memset(tupla, 0, TAMANHO_NOME_CAMPO);
-    char *tuplaT = (char *)malloc(sizeof(char)*TAMANHO_NOME_TABELA+1);
+    char *tuplaT = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA+1);
     memset(tuplaT, 0, TAMANHO_NOME_TABELA+1);
 
-    tp_table *esquema = (tp_table *)malloc(sizeof(tp_table)*(objeto.qtdCampos+1)); // Aloca esquema com a quantidade de campos necessarios.
+    tp_table *esquema = (tp_table *)uffslloc(sizeof(tp_table)*(objeto.qtdCampos+1)); // Aloca esquema com a quantidade de campos necessarios.
     memset(esquema, 0, (objeto.qtdCampos+1)*sizeof(tp_table));
     for (i = 0; i < objeto.qtdCampos+1; i++)  esquema[i].next = NULL;
 
     i = 0;
     if(esquema == NULL){
-        free(tupla);
-        free(tuplaT);
+
         return ERRO_DE_ALOCACAO;
     }
 
@@ -390,9 +368,6 @@ tp_table *leSchema (struct fs_objects objeto){
     schema = fopen(directory, "a+b"); // Abre o arquivo de esquemas de tabelas.
 
     if (schema == NULL){
-        free(tupla);
-        free(tuplaT);
-        free(esquema);
         return ERRO_ABRIR_ESQUEMA;
     }
 
@@ -424,8 +399,6 @@ tp_table *leSchema (struct fs_objects objeto){
     }
     esquema[i].next = NULL;
 
-    free(tupla);
-    free(tuplaT);
     fclose(schema);
     return esquema;
 }
@@ -444,7 +417,7 @@ int procuraObjectArquivo(char *nomeTabela){
         achou        = 0,
         tamanhoTotal = 52;
 
-    char *table = (char *)malloc(sizeof(char) * tamanhoTotal);
+    char *table = (char *)uffslloc(sizeof(char) * tamanhoTotal);
     FILE *dicionario, *fp;
 
     char directory[LEN_DB_NAME_IO];
@@ -452,7 +425,6 @@ int procuraObjectArquivo(char *nomeTabela){
     strcat(directory, "fs_object.dat");
 
     if((dicionario = fopen(directory,"a+b")) == NULL) {
-        free(table);
         return ERRO_ABRIR_ARQUIVO;
     }
 
@@ -460,7 +432,6 @@ int procuraObjectArquivo(char *nomeTabela){
     strcat(directory, "fs_nobject.dat");
 
     if((fp = fopen(directory, "a+b")) == NULL) {
-        free(table);
         return ERRO_ABRIR_ARQUIVO;
     }
 
@@ -498,7 +469,6 @@ int procuraObjectArquivo(char *nomeTabela){
 
     system(directoryex);
 
-    free(table);
     return SUCCESS;
 }
 //
@@ -549,7 +519,7 @@ tp_table* verificaIntegridade(char *nTabela){
         fread(&esquema.tabelaApt, TAMANHO_NOME_TABELA, 1, fp);
         fread(&esquema.attApt, TAMANHO_NOME_CAMPO, 1, fp);
         if(!strncmp(nTabela, esquema.tabelaApt, 20) && esquema.chave == FK){
-            tp_table *e = (tp_table *)malloc(sizeof(tp_table));
+            tp_table *e = (tp_table *)uffslloc(sizeof(tp_table));
             memcpy(e, &esquema, sizeof(tp_table));
             e->next = fkColumns;
             fkColumns = e;
@@ -561,7 +531,7 @@ tp_table* verificaIntegridade(char *nTabela){
 
 nodo *buildBplusForPK(tp_table *filho) { //TODO: RENOMEAR FUNÇÃO
     struct fs_objects tabela = leObjetoById(filho->id);
-    char *pkFileName = (char *)malloc(TAMANHO_NOME_INDICE);
+    char *pkFileName = (char *)uffslloc(TAMANHO_NOME_INDICE);
     pkFileName = strcat(tabela.nome, filho->nome);
     return constroi_bplus(pkFileName);
 }
@@ -572,7 +542,7 @@ table *iniciaTabela(char *nome){
         return ERRO_NOME_TABELA_INVALIDO;
     }
 
-    table *t = (table *)malloc(sizeof(table)*1);
+    table *t = (table *)uffslloc(sizeof(table)*1);
     memset(t,0,sizeof(table));
     strcpylower(t->nome,nome); // Inicia a estrutura de tabela com o nome da tabela.
     t->esquema = NULL; // Inicia o esquema da tabela com NULL.
@@ -586,7 +556,7 @@ table *adicionaCampo(table *t,char *nomeCampo, char tipoCampo, int tamanhoCampo,
     if(t == NULL) return ERRO_ESTRUTURA_TABELA_NULA;
     tp_table *aux;
     if(t->esquema == NULL){ // Se o campo for o primeiro a ser adicionado, adiciona campo no esquema.
-      e = (tp_table *)malloc(sizeof(tp_table));
+      e = (tp_table *)uffslloc(sizeof(tp_table));
       memset(e, 0, sizeof(tp_table));
       if (e == NULL) return ERRO_DE_ALOCACAO;
 
@@ -611,7 +581,7 @@ table *adicionaCampo(table *t,char *nomeCampo, char tipoCampo, int tamanhoCampo,
     else {
         for(aux = t->esquema; aux != NULL; aux = aux->next){ // Anda até o final da estrutura de campos.
             if(aux->next == NULL){ // Adiciona um campo no final.
-                e = (tp_table *)malloc(sizeof(tp_table));
+                e = (tp_table *)uffslloc(sizeof(tp_table));
                 memset(e, 0, sizeof(*e));
                 if (e == NULL) return ERRO_DE_ALOCACAO;
                 e->next = NULL;
@@ -695,7 +665,7 @@ int finalizaTabela(table *t){
 ////
 // INSERE NA TABELA
 column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {    
-    column *e = (column *)malloc(sizeof(column));
+    column *e = (column *)uffslloc(sizeof(column));
     if (e == NULL) return ERRO_DE_ALOCACAO;
     e->next = NULL;
 
@@ -719,9 +689,8 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
     
     int nTam = (tipo == 'S') ? tam : strlen(valorCampo);
 
-    e->valorCampo = (char *)malloc(sizeof(char) * (nTam+1));
+    e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam+1));
     if (e->valorCampo == NULL) {
-        free(e);
         return ERRO_DE_ALOCACAO;
     }
     n = strlen(valorCampo);
@@ -750,14 +719,13 @@ void printTable(char *tbl){
 	if(tbl == NULL){     //mostra todas as tabelas do banco
 		FILE *dicionario;
 		printf("		List of Relations\n");
-		char *tupla = (char *)malloc(sizeof(char)*TAMANHO_NOME_TABELA);
+		char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
 
 		char directory[LEN_DB_NAME_IO];
     	strcpy(directory, connected.db_directory);
     	strcat(directory, "fs_object.dat");
 
 		if((dicionario = fopen(directory,"a+b")) == NULL){
-			free(tupla);
 			printf("ERROR: cannot open file\n");
 			return;
 		}
@@ -773,7 +741,6 @@ void printTable(char *tbl){
 			i++;
 		}
 		fclose(dicionario);
-		free(tupla);
 		printf("(%d %s)\n\n", i, (i<=1)? "row": "rows");
 	} else{               //mostra todos atributos da tabela *tbl
 
@@ -791,15 +758,15 @@ void printTable(char *tbl){
 
 		abreTabela(tbl, &objeto1, &esquema1);
 
-		tp_table *tab3 = (tp_table *)malloc(sizeof(struct tp_table));
+		tp_table *tab3 = (tp_table *)uffslloc(sizeof(struct tp_table));
 		tab3 = procuraAtributoFK(objeto1); //retorna tp_table
 		int l, ipk=0, ifk=0, ibt=0;
 
-		char **pk 			= (char**)malloc(objeto1.qtdCampos*sizeof(char**));
-		char **fkTable		= (char**)malloc(objeto1.qtdCampos*sizeof(char**));
-		char **fkColumn 	= (char**)malloc(objeto1.qtdCampos*sizeof(char**));
-		char **refColumn 	= (char**)malloc(objeto1.qtdCampos*sizeof(char**));
-    char **btIndex		= (char**)malloc(objeto1.qtdIndice*sizeof(char*));
+		char **pk 			= (char**)uffslloc(objeto1.qtdCampos*sizeof(char**));
+		char **fkTable		= (char**)uffslloc(objeto1.qtdCampos*sizeof(char**));
+		char **fkColumn 	= (char**)uffslloc(objeto1.qtdCampos*sizeof(char**));
+		char **refColumn 	= (char**)uffslloc(objeto1.qtdCampos*sizeof(char**));
+    char **btIndex		= (char**)uffslloc(objeto1.qtdIndice*sizeof(char*));
 
 		memset(pk 		, 0, objeto1.qtdCampos);
 		memset(fkTable 	, 0, objeto1.qtdCampos);
@@ -809,10 +776,10 @@ void printTable(char *tbl){
 
 		int i;
 		for(i=0; i<objeto1.qtdCampos; i++) {
-			pk[i] 			= (char*)malloc(TAMANHO_NOME_CAMPO*sizeof(char));
-			fkTable[i] 		= (char*)malloc(TAMANHO_NOME_CAMPO*sizeof(char));
-			fkColumn[i] 	= (char*)malloc(TAMANHO_NOME_CAMPO*sizeof(char));
-			refColumn[i] 	= (char*)malloc(TAMANHO_NOME_CAMPO*sizeof(char));
+			pk[i] 			= (char*)uffslloc(TAMANHO_NOME_CAMPO*sizeof(char));
+			fkTable[i] 		= (char*)uffslloc(TAMANHO_NOME_CAMPO*sizeof(char));
+			fkColumn[i] 	= (char*)uffslloc(TAMANHO_NOME_CAMPO*sizeof(char));
+			refColumn[i] 	= (char*)uffslloc(TAMANHO_NOME_CAMPO*sizeof(char));
 
 			memset(pk[i] 		, '\0', TAMANHO_NOME_CAMPO);
 			memset(fkTable[i] 	, '\0', TAMANHO_NOME_CAMPO);
@@ -822,7 +789,7 @@ void printTable(char *tbl){
 		}
 
     for(i=0; i<objeto1.qtdIndice; i++) {
-      btIndex[i] = (char*)malloc (TAMANHO_NOME_CAMPO*sizeof(char));
+      btIndex[i] = (char*)uffslloc (TAMANHO_NOME_CAMPO*sizeof(char));
     }
 
 		for(l=0; l<objeto1.qtdCampos; l++) {
@@ -873,14 +840,6 @@ void printTable(char *tbl){
 			}
 		}
 		
-		for(i=0; i < objeto1.qtdIndice; i++)	free(btIndex[i]);
-		
-		free(pk);
-		free(btIndex);
-		free(fkTable);
-		free(fkColumn);
-		free(refColumn);
-		free(tab3);
 		printf("\n");
 	}
 }
@@ -974,20 +933,20 @@ void adicionaBT(char *nomeTabela, char *nomeAtrib) {
  */
 
 void freeTp_table(tp_table **tabela, int n) {
-	free(tabela);
+	// free(tabela);
 }
 
 
 void freeTable(table *tabela) {
 	if (tabela != NULL) {
-		free(tabela->esquema);
-		free(tabela);
+		// free(tabela->esquema);
+		// free(tabela);
 	}
 }
 
 
 void freeColumn(column *colunas) {
 	if (colunas != NULL) {
-		free(colunas);
+		// free(colunas);
 	}
 }
