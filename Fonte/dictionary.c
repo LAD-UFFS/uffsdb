@@ -662,7 +662,7 @@ int finalizaTabela(table *t){
     fclose(dicionario);
     return SUCCESS;
 }
-////
+
 // INSERE NA TABELA
 column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {    
     column *e = (column *)uffslloc(sizeof(column));
@@ -673,13 +673,12 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
     char tipo = retornaTamanhoTipoDoCampo(nomeCampo,tab);
     int n = strlen(nomeCampo)+1;
 
-    /**
-     * Verifica se o nome ultrapassa o limite, se sim trunca
-     */
+    //Verifica se o nome ultrapassa o limite, se sim trunca
     if (n > TAMANHO_NOME_CAMPO) {
         n = TAMANHO_NOME_CAMPO;
         printf("WARNING: field name exceeded the size limit and was truncated.\n");
     }
+
     strncpylower(e->nomeCampo, nomeCampo, n-1);
 
     if(valorCampo == COLUNA_NULL){
@@ -693,14 +692,21 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
     if (e->valorCampo == NULL) {
         return ERRO_DE_ALOCACAO;
     }
+
     n = strlen(valorCampo);
     if (tipo == 'S' && n > tam) {
         n = tam;
         printf("WARNING: value of column \"%s\" exceeded the size limit and was truncated.\n", nomeCampo);
     }
 
-    strncpy(e->valorCampo, valorCampo,n);
-    e->valorCampo[n] = '\0';
+    //checagem para PK não possuir repetição com zeros a esquerda (1, 01, ...)
+    if (tipo == 'I'){
+        int valorCampoNormalizado = atoi(valorCampo);
+        sprintf(e->valorCampo, "%d", valorCampoNormalizado);
+    } else{
+        strncpy(e->valorCampo, valorCampo, n);
+        e->valorCampo[n] = '\0';
+    }
 
     fim:
         if (!c) return e;
@@ -710,7 +716,7 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
 
         return c;
 }
-//////
+
 /*------------------------------------------------------------------------------------------
 Objetivo: Mostrar as tabelas do banco de dados ou, em específico, os atributos de uma tabela
 ------------------------------------------------------------------------------------------*/
@@ -941,7 +947,7 @@ void freeTable(table *tabela) {
 	if (tabela != NULL) {
 		// free(tabela->esquema);
 		// free(tabela);
-	}
+	docker run -it banco bash}
 }
 
 
