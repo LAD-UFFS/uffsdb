@@ -947,7 +947,7 @@ void freeTable(table *tabela) {
 	if (tabela != NULL) {
 		// free(tabela->esquema);
 		// free(tabela);
-	docker run -it banco bash}
+	}
 }
 
 

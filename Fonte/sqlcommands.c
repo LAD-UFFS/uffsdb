@@ -378,60 +378,65 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
                     return ERRO_INDEX_NULL;
                 }
 
-                arquivoIndice = (char *)uffslloc(sizeof(char) *
-                  (strlen(connected.db_directory) + strlen(nome) + strlen(tab2[j].nome)));
+                arquivoIndice = (char *)uffslloc(sizeof(char) * (strlen(connected.db_directory) + strlen(nome) + strlen(tab2[j].nome)));
                 strcpy(arquivoIndice, connected.db_directory); //diretorio
-                strcat(arquivoIndice, nome); //nome da tabela
-                strcat(arquivoIndice, tab2[j].nome); //nome do atributo
+                strcat(arquivoIndice, nome);                   //nome da tabela
+                strcat(arquivoIndice, tab2[j].nome);           //nome do atributo
 
-                // verificacao da chave primaria
-                raiz = constroi_bplus(arquivoIndice);
+                raiz = constroi_bplus(arquivoIndice); // verificacao da chave primaria
                 if(raiz != NULL) {
-                        char* valorNormalizado = temp->valorCampo;
-                        if(tab2[j].tipo == 'I'){
-                            int valorInt = atoi(valorNormalizado);
-                            valorNormalizado = (char*)uffslloc(32);
-                            sprintf(valorNormalizado, "%d", valorInt);
-                        }
-                        encontrou = buscaChaveBtree(raiz, valorNormalizado); 
-                        if (encontrou) {
-                            //Compara para ver se é not null
-                            if (tab2[j].chave == PK || tab2[j].chave == FK) {
-                                  if(strcmp(temp->valorCampo, "0") == 0){
-                                    printf("ERROR: NULL value in column '%s' violates NOT-NULL constraint.\n", temp->nomeCampo);
-                                    return ERRO_NAO_INSERIR_EM_NOT_NULL;
-                                 }
+                    char* valorNormalizado = temp->valorCampo;
+                    if(tab2[j].tipo == 'I'){
+                        int valorInt = atoi(valorNormalizado);
+                        valorNormalizado = (char*)uffslloc(32);
+                        sprintf(valorNormalizado, "%d", valorInt);
+                    }
+                    encontrou = buscaChaveBtree(raiz, valorNormalizado); 
+                    if (encontrou) {
+                        //Compara para ver se é not null
+                        if (tab2[j].chave == PK || tab2[j].chave == FK) {
+                            if(strcmp(temp->valorCampo, "0") == 0){
+                                printf("ERROR: NULL value in column '%s' violates NOT-NULL constraint.\n", temp->nomeCampo);
+                                return ERRO_NAO_INSERIR_EM_NOT_NULL;
                             }
+                        }
                         printf("ERROR: duplicated key value violates unique constraint \"%s_pkey\"\nDETAIL:  Key (%s)=(%s) already exists.\n",nome,temp->nomeCampo,temp->valorCampo);
                         return ERRO_CHAVE_PRIMARIA;
-                        }
                     }
-                    flag = 1;
-                    break;
+                }
+                flag = 1;
+                break;
             case FK:
                 if(temp->valorCampo == COLUNA_NULL) {
                     printf("ERROR: attempt to insert NULL value into collumn \"%s\".\n\n", temp->nomeCampo);
                     return ERRO_INDEX_NULL;
                 }
-              //monta o nome do arquivo de indice da chave estrangeira
-                arquivoIndice = (char *)uffslloc(sizeof(char) *
-                    (strlen(connected.db_directory) + strlen(tab2[j].tabelaApt) + strlen(tab2[j].attApt)));// caminho diretorio de arquivo de indice
+                //
+                //monta o nome do arquivo de indice da chave estrangeira
+                arquivoIndice = (char *)uffslloc(sizeof(char) * (strlen(connected.db_directory) + strlen(tab2[j].tabelaApt) + strlen(tab2[j].attApt)));// caminho diretorio de arquivo de indice
                 strcpy(arquivoIndice, connected.db_directory); //diretorio
                 strcat(arquivoIndice, tab2[j].tabelaApt);
                 strcat(arquivoIndice, tab2[j].attApt);
 
                 raizfk = constroi_bplus(arquivoIndice); //verifica se o atributo referenciado pela FK possui indice B+
                 if(raizfk == NULL) { //se não encontra faz a verificação sem indice b+
-        			if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
-        				erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo,
-                        tab2[j].tabelaApt, tab2[j].attApt);
-                        if (erro != SUCCESS){
-                            printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
-                            return ERRO_CHAVE_ESTRANGEIRA;
+                        if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
+                            erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo,
+                            tab2[j].tabelaApt, tab2[j].attApt);
+                            if (erro != SUCCESS){
+                                printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
+                                return ERRO_CHAVE_ESTRANGEIRA;
+                            }
                         }
+                }
+                else { //atributo referenciado possui indice B+
+                    char* valorNormalizado = temp->valorCampo;
+                    if(tab2[j].tipo == 'I'){
+                        int valorInt = atoi(valorNormalizado);
+                        valorNormalizado = (char*)uffslloc(32);
+                        sprintf(valorNormalizado, "%d", valorInt);
                     }
-                } else { //atributo referenciado possui indice B+
-                    encontrou = buscaChaveBtree(raizfk, temp->valorCampo);
+                    encontrou = buscaChaveBtree(raiz, valorNormalizado); 
                     if (!encontrou) {
                         printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
                         return ERRO_CHAVE_ESTRANGEIRA;
@@ -1183,7 +1188,7 @@ int verifyFieldName(char **fieldName, int N){
 void createTable(rc_insert *t) {
   for(int i = 0; i < t->N; i++){
         if(t->type[i] == 'S'){
-            int tam = atoi(t->values[i]
+            int tam = atoi(t->values[i]);
         }
   }
   if(strlen(t->objName) > TAMANHO_NOME_TABELA){
