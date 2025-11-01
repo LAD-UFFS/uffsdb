@@ -371,7 +371,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
             break;
 
             case PK:
-        		if(flag == 1) break;
+                if(flag == 1) break;
                 //monta o nome do arquivo de indice
                 if(temp->valorCampo == COLUNA_NULL) {
                     printf("ERROR: attempt to insert NULL value into collumn \"%s\".\n\n", temp->nomeCampo);
@@ -382,27 +382,32 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
                   (strlen(connected.db_directory) + strlen(nome) + strlen(tab2[j].nome)));
                 strcpy(arquivoIndice, connected.db_directory); //diretorio
                 strcat(arquivoIndice, nome); //nome da tabela
-        				strcat(arquivoIndice, tab2[j].nome); //nome do atributo
+                strcat(arquivoIndice, tab2[j].nome); //nome do atributo
 
-        		// verificacao da chave primaria
-        		raiz = constroi_bplus(arquivoIndice);
-        		if(raiz != NULL) {
-        			encontrou = buscaChaveBtree(raiz, temp->valorCampo); 
-        			if (encontrou) {
-                //Compara para ver se é not null
-                if (tab2[j].chave == PK || tab2[j].chave == FK) {
-                  if(strcmp(temp->valorCampo, "0") == 0){
-                    printf("ERROR: NULL value in column '%s' violates NOT-NULL constraint.\n", temp->nomeCampo);
-                    return ERRO_NAO_INSERIR_EM_NOT_NULL;
-                  }
-                }
-        				printf("ERROR: duplicated key value violates unique constraint \"%s_pkey\"\nDETAIL:  Key (%s)=(%s) already exists.\n",nome,temp->nomeCampo,temp->valorCampo);
-        				return ERRO_CHAVE_PRIMARIA;
-        			}
-        		}
-        		flag = 1;
-            break;
-
+                // verificacao da chave primaria
+                raiz = constroi_bplus(arquivoIndice);
+                if(raiz != NULL) {
+                        char* valorNormalizado = temp->valorCampo;
+                        if(tab2[j].tipo == 'I'){
+                            int valorInt = atoi(valorNormalizado);
+                            valorNormalizado = (char*)uffslloc(32);
+                            sprintf(valorNormalizado, "%d", valorInt);
+                        }
+                        encontrou = buscaChaveBtree(raiz, valorNormalizado); 
+                        if (encontrou) {
+                            //Compara para ver se é not null
+                            if (tab2[j].chave == PK || tab2[j].chave == FK) {
+                                  if(strcmp(temp->valorCampo, "0") == 0){
+                                    printf("ERROR: NULL value in column '%s' violates NOT-NULL constraint.\n", temp->nomeCampo);
+                                    return ERRO_NAO_INSERIR_EM_NOT_NULL;
+                                 }
+                            }
+                        printf("ERROR: duplicated key value violates unique constraint \"%s_pkey\"\nDETAIL:  Key (%s)=(%s) already exists.\n",nome,temp->nomeCampo,temp->valorCampo);
+                        return ERRO_CHAVE_PRIMARIA;
+                        }
+                    }
+                    flag = 1;
+                    break;
             case FK:
                 if(temp->valorCampo == COLUNA_NULL) {
                     printf("ERROR: attempt to insert NULL value into collumn \"%s\".\n\n", temp->nomeCampo);
@@ -1163,7 +1168,7 @@ int excluirTabela(char *nomeTabela) {
 int verifyFieldName(char **fieldName, int N){
     int i, j;
     if(N<=1) return 1;
-    for(i=0; i < N; i++){
+    for(int i = 0; i < N; i++){
         for(j=i+1; j < N; j++){
             if(objcmp(fieldName[i], fieldName[j]) == 0){
                 printf("ERROR: column \"%s\" specified more than once\n", fieldName[i]);
@@ -1176,6 +1181,11 @@ int verifyFieldName(char **fieldName, int N){
 
 //////
 void createTable(rc_insert *t) {
+  for(int i = 0; i < t->N; i++){
+        if(t->type[i] == 'S'){
+            int tam = atoi(t->values[i]
+        }
+  }
   if(strlen(t->objName) > TAMANHO_NOME_TABELA){
       printf("A table name must have no more than %d caracteres.\n",TAMANHO_NOME_TABELA);
       return;
@@ -1309,5 +1319,3 @@ void createIndex(rc_insert *t) {
   adicionaBT(t->objName, t->columnName[0]);
   printf("CREATE INDEX\n");
 }
-
-///////
