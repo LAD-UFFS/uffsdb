@@ -1173,7 +1173,7 @@ int excluirTabela(char *nomeTabela) {
 int verifyFieldName(char **fieldName, int N){
     int i, j;
     if(N<=1) return 1;
-    for(int i = 0; i < N; i++){
+    for(i = 0; i < N; i++){
         for(j=i+1; j < N; j++){
             if(objcmp(fieldName[i], fieldName[j]) == 0){
                 printf("ERROR: column \"%s\" specified more than once\n", fieldName[i]);
@@ -1186,11 +1186,6 @@ int verifyFieldName(char **fieldName, int N){
 
 //////
 void createTable(rc_insert *t) {
-  for(int i = 0; i < t->N; i++){
-        if(t->type[i] == 'S'){
-            int tam = atoi(t->values[i]);
-        }
-  }
   if(strlen(t->objName) > TAMANHO_NOME_TABELA){
       printf("A table name must have no more than %d caracteres.\n",TAMANHO_NOME_TABELA);
       return;
