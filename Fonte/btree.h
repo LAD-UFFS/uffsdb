@@ -55,6 +55,8 @@ void insere_arquivo(nodo* inicio, char* nomeTabela);
 /* Insere a chave (ind) e o endereço (end) no arquivo de indices. */
 void insere_indice(nodo* raiz, char* ind, char* nomeTabela, long int end);
 
+int VerificaNumero(const char* str);
+
 int buscaChaveBtree(nodo* raiz, char* ind);
 
 int calculaOrdem (int nTuplas);

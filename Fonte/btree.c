@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include "memoryContext.h"
 ////
 #ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
@@ -96,8 +97,14 @@ nodo* insereChaveEmNodoInterno(char* ind, nodo* n) {
 	return n;
 }
 
-/* Recebe a raiz para a árvore e o valor de uma chave. Tenta encontrar a chave
- * na árvore. Se encontrar retorna 1, caso contrário retorna 0. */
+int VerificaNumero(const char* ind) {
+	if (!ind || *ind == '\0') return 0; // se a string não existe ou é vazia retorna false
+    for (int i = 0; ind[i]; i++) {
+		if (!isdigit((unsigned char)ind[i])) return 0; //testa char por char se é um digito de 0-9
+    }
+    return 1;
+}
+
 int buscaChaveBtree(nodo* raiz, char* ind) {
 	int i;
 	nodo* aux = raiz;
@@ -115,11 +122,14 @@ int buscaChaveBtree(nodo* raiz, char* ind) {
 		}
 	}
 	for (i = 0; i < aux->quant_data; i++) {
-		if (strcmp(aux->data[i], ind) == 0) return 1;
+		if (VerificaNumero(ind) && VerificaNumero(aux->data[i])) { //verifica se os valores são dígitos numéricos
+			if (atoi(ind) == atoi(aux->data[i])) return 1; //se forem converte para int para comparar
+        } else {
+			if (strcmp(ind, aux->data[i]) == 0) return 1; //senão mantém a verificação em string
+        }
 	}
 	return 0;
 }
-
 
 /* Busca a posição de inserção de uma chave (ind) e um endereço (end) na árvore.
  * Retorna um ponteiro para o índice denso (lista de folhas). */
