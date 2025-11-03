@@ -81,9 +81,10 @@ help							return HELP;
 								};
 [\\]dhis						return DELETE_HISTORY;
 [\\]dhis+[^\n]*				{invalidCommand(yytext);};
-[\\][c]							return CONNECT;
-[\\][c]+[^ ^\n]*		{invalidCommand(yytext);};
-[\\][c]+[ ]*[\n]		{invalidCommand("\\c <enter>'. Expecting '\\c DBNAME"); return 0;};
+[\\][c][ \t]+      return CONNECT;
+([a-zA-Z_@#$!%&áàâãéèêíìîóòôõúùûç][a-zA-Z0-9_@#$!%&áàâãéèêíìîóòôõúùûç]*) { yylval.strval = strdup(yytext); return OBJECT; }
+[\\][c][ \t]*[\n]  { invalidCommand("\\c <enter>'. Expecting '\\c DBNAME"); return 0; }
+[\\][c]+[^\n]*     { invalidCommand(yytext); return 0; }
 [\\][l]							return LIST_DBASES;
 [\\][l]+[^\n]*			{invalidCommand(yytext);};
 [\\][q]							return QUIT;

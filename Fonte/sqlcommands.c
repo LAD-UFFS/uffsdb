@@ -590,11 +590,18 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
               }
           i++;
           }
-          int valorInteiro = 0;
-          sscanf(auxC->valorCampo,"%d",&valorInteiro);
-          memcpy(buffer + offsetBuffer, &valorInteiro,sizeof(valorInteiro));
-          offsetBuffer += sizeof(valorInteiro);
-          DEBUG_PRINT("INSERT - Integer value written in file: %d", valorInteiro);
+            char *endptr;
+            long valorLong = strtol(auxC->valorCampo, &endptr, 10);
+
+            if (*endptr != '\0' || valorLong > 2147483647L || valorLong < -2147483648L) {
+                printf("ERRO: valor \"%s\" apresenta overflow \"%s\" (int).\n", auxC->valorCampo, auxC->nomeCampo);
+                free(tab); free(tab2); free(auxT); fclose(dados);
+                return ERRO_NO_TIPO_INTEIRO;
+            }
+            int valorInteiro = (int)valorLong;
+            memcpy(buffer + offsetBuffer, &valorInteiro, sizeof(valorInteiro));
+            offsetBuffer += sizeof(valorInteiro);
+
         }
         else if (auxT[t].tipo == 'D'){ // Grava um dado do tipo double.
           x = 0;
