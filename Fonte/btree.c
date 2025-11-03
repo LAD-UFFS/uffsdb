@@ -105,6 +105,8 @@ int VerificaNumero(const char* ind) {
     return 1;
 }
 
+/* Recebe a raiz para a árvore e o valor de uma chave. Tenta encontrar a chave
+ * na árvore. Se encontrar retorna 1, caso contrário retorna 0. */
 int buscaChaveBtree(nodo* raiz, char* ind) {
 	int i;
 	nodo* aux = raiz;
