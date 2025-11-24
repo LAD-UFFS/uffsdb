@@ -202,7 +202,7 @@ void limparLista(Lista *l){
 }
 
 void resetQuery() {
-    if(getMode() == OP_SELECT || getMode() == OP_DELETE) {
+    if(getMode() == OP_SELECT || getMode() == OP_DELETE || getMode() == OP_UPDATE) {
         if(QUERY.tabela) {
             QUERY.tabela = NULL;
         }
@@ -272,7 +272,6 @@ int interface() {
         if(!(*input)) continue;
         getComando(input);
         free(input);
-        
         if (GLOBAL_PARSER.noerror) {
             if (GLOBAL_PARSER.mode != 0) {
                 if (!connected.conn_active) {
@@ -297,6 +296,13 @@ int interface() {
                             resultado = handleTableOperation(&QUERY, 'd');
                             if (resultado && afterTrigger(resultado, &QUERY)) {
                                 op_delete(resultado, QUERY.tabela);
+                                resultado = NULL;
+                            }
+                            break;
+                        case OP_UPDATE:
+                            resultado = handleTableOperation(&QUERY, 'u');
+                            if (resultado) {
+                                op_update(resultado, QUERY.tabela, &GLOBAL_DATA);
                                 resultado = NULL;
                             }
                             break;
@@ -372,6 +378,39 @@ int interface() {
         uffsFree(TEMPORARY);
     }
     return 0;
+}
+
+// Armazena a coluna a ser atualizada no UPDATE
+void setColumnUpdate(char **nome) {
+    GLOBAL_DATA.columnName = uffsRealloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char)*(strlen(*nome)+1));
+    strcpylower(GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count], *nome);
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count][strlen(*nome)] = '\0';
+    
+    GLOBAL_PARSER.col_count++;
+}
+
+// Armazena o novo valor para UPDATE
+void setValueUpdate(char *nome, char type) {
+    int i;
+    GLOBAL_DATA.values  = uffsRealloc(GLOBAL_DATA.values, (GLOBAL_PARSER.val_count+1)*sizeof(char *));
+    GLOBAL_DATA.type    = uffsRealloc(GLOBAL_DATA.type, (GLOBAL_PARSER.val_count+1)*sizeof(char));
+
+    GLOBAL_DATA.values[GLOBAL_PARSER.val_count] = uffslloc(sizeof(char)*(strlen(nome)+1));
+    
+    if (type == 'I' || type == 'D') {
+        strcpy(GLOBAL_DATA.values[GLOBAL_PARSER.val_count], nome);
+        GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)] = '\0';
+    } else if (type == 'S') {
+        for (i = 1; i < strlen(nome)-1; i++) {
+            GLOBAL_DATA.values[GLOBAL_PARSER.val_count][i-1] = nome[i];
+        }
+        GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)-2] = '\0';
+    }
+    
+    GLOBAL_DATA.type[GLOBAL_PARSER.val_count] = type;
+    GLOBAL_PARSER.val_count++;
 }
 
 void yyerror(char *s, ...) {

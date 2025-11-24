@@ -185,7 +185,7 @@ drop_database: DROP DATABASE {setMode(OP_DROP_DATABASE);} OBJECT {setObjName(yyt
 select: SELECT {setMode(OP_SELECT); resetQuery();} projecao
         FROM table_query where semicolon {return 0;};
 
-table_query: OBJECT {adcTabelaQuery(yylval.strval, getMode() == OP_SELECT ? 'S' : 'D');};
+table_query: OBJECT {adcTabelaQuery(yylval.strval, getMode() == OP_SELECT ? 'S' : (getMode() == OP_UPDATE ? 'U' : 'D')); };
 
 projecao: ASTERISCO {adcProjSelect(yylval.strval);}
         |  OBJECT {adcProjSelect(yylval.strval);} projecao2
@@ -206,6 +206,7 @@ repLogicos: /* epsilon */
           | LOGICO {adcTokenWhere(*yytext,1);} logicos
 
 relacoes: operacao RELACIONAL {adcTokenWhere(yylval.strval,2);} operacao
+        | operacao '='        {adcTokenWhere("=",2);}            operacao
 
 operacao: STRING {adcTokenWhere(yylval.strval,7);}
         | operando operacao2
@@ -234,8 +235,7 @@ atributo: OBJECT {setColumnBtreeCreate(yytext);}
 /* DELETE */
 delete: DELETE FROM {setMode(OP_DELETE); resetQuery();} table_query where semicolon { return 0; };
 
-update_assignments: update_assignment 
-                  | update_assignment ',' update_assignments;
+update_assignments: update_assignment | update_assignment ',' update_assignments;
 
 update_assignment: OBJECT '=' update_value {setColumnUpdate(yytext);};
 

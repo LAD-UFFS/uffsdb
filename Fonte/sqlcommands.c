@@ -1311,3 +1311,15 @@ void createIndex(rc_insert *t) {
 }
 
 ///////
+
+
+
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Atualiza tuplas (versão simplificada - não atualiza colunas indexadas).
+    Parametros: Lista de tuplas, nome da tabela, dados do UPDATE.
+    Retorno:    Void.
+   ---------------------------------------------------------------------------------------------*/
+void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
+    printf("chegando no update\n");
+
+}

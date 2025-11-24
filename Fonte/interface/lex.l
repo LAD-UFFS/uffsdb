@@ -64,9 +64,8 @@ help							return HELP;
 [-+]?[0-9]*\.[0-9]*					{yylval.strval = yytext; return VALUE;};
 [-+]?[0-9]+							    {yylval.strval = yytext; return NUMBER;};
 ([%]|[/])       {yylval.strval = yytext; return OPERADOR;}
-
-([>][=]|[<][=]|[=]|[!][=]|[>]|[<]) {yylval.strval = yytext; return RELACIONAL;};
-
+"="                             {return '=';};
+([>][=]|[<][=]|[!][=]|[>]|[<]) {yylval.strval = yytext; return RELACIONAL;};
 \n								{
 									// if (GLOBAL_PARSER.mode != 0) {
 									// 	if (GLOBAL_PARSER.parentesis)
