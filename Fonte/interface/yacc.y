@@ -42,7 +42,7 @@ int yywrap() {
     char *strval;
 }
 
-%token  INSERT      INTO        VALUES      SELECT      FROM
+%token  INSERT      INTO        VALUES      SELECT      FROM 
         CREATE      TABLE       INTEGER     VARCHAR     DOUBLE
         CHAR        PRIMARY     KEY         REFERENCES  DATABASE
         DROP        OBJECT      NUMBER      VALUE       QUIT
@@ -50,9 +50,9 @@ int yywrap() {
         CLEAR       CONTR       WHERE       OPERADOR    RELACIONAL
         LOGICO      ASTERISCO   SINAL       FECHA_P     ABRE_P
         STRING      INDEX       ON          IMPLEMENT   HISTORY 
-        DELETE      DELETE_HISTORY;
+        DELETE      DELETE_HISTORY          UPDATE      SET;
 %%
-start: insert | select | delete | create_table | create_database | drop_table | drop_database
+start: insert | select | update | delete | create_table | create_database | drop_table | drop_database
      | table_attr | list_tables | connection | exit_program | semicolon {GLOBAL_PARSER.consoleFlag = 1; return 0;}
      | help_pls | list_databases | clear | contributors | create_index | history_pls | delete_history_pls
      | qualquer_coisa | implement | /*epsilon*/;
@@ -185,7 +185,7 @@ drop_database: DROP DATABASE {setMode(OP_DROP_DATABASE);} OBJECT {setObjName(yyt
 select: SELECT {setMode(OP_SELECT); resetQuery();} projecao
         FROM table_query where semicolon {return 0;};
 
-table_query: OBJECT {adcTabelaQuery(yylval.strval, getMode() == OP_SELECT ? 'S' : 'D');};
+table_query: OBJECT {adcTabelaQuery(yylval.strval, getMode() == OP_SELECT ? 'S' : (getMode() == OP_UPDATE ? 'U' : 'D')); };
 
 projecao: ASTERISCO {adcProjSelect(yylval.strval);}
         |  OBJECT {adcProjSelect(yylval.strval);} projecao2
@@ -206,6 +206,7 @@ repLogicos: /* epsilon */
           | LOGICO {adcTokenWhere(*yytext,1);} logicos
 
 relacoes: operacao RELACIONAL {adcTokenWhere(yylval.strval,2);} operacao
+        | operacao '='        {adcTokenWhere("=",2);}            operacao
 
 operacao: STRING {adcTokenWhere(yylval.strval,7);}
         | operando operacao2
@@ -234,6 +235,26 @@ atributo: OBJECT {setColumnBtreeCreate(yytext);}
 /* DELETE */
 delete: DELETE FROM {setMode(OP_DELETE); resetQuery();} table_query where semicolon { return 0; };
 
+update_assignments: update_assignment | update_assignment ',' update_assignments;
 
+update_assignment: OBJECT '=' update_value {setColumnUpdate(yytext);};
+
+update_value: VALUE  {setValueUpdate(yylval.strval, 'D');}
+            | NUMBER {setValueUpdate(yylval.strval, 'I');}
+            | STRING {setValueUpdate(yylval.strval, 'S');};
+
+update: UPDATE {setMode(OP_UPDATE); resetQuery();} 
+        table_query 
+        SET update_assignments 
+        where 
+        semicolon {
+    if (GLOBAL_PARSER.col_count == GLOBAL_PARSER.val_count) {
+        GLOBAL_DATA.N = GLOBAL_PARSER.col_count;
+    } else {
+        printf("ERROR: Column/Value count mismatch.\n");
+        GLOBAL_PARSER.noerror = 0;
+    }
+    return 0;
+};
 /* END */
 %%

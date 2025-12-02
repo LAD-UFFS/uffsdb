@@ -9,7 +9,7 @@
    #include "commandHandler.h"
 #endif
 
-char *comandos[] = {"select", "from", "where", "insert into", "values", "drop", "create", "table", "database", "index on", "int", "varchar", "char", NULL};
+char *comandos[] = {"select", "from", "update", "set", "where", "insert into", "values", "drop", "create", "table", "database", "index on", "int", "varchar", "char", NULL};
 
 
 // Função que retorna uma palavra que casa com o que foi digitado
@@ -46,7 +46,6 @@ void getComando(char * input){
 
     yyin = fmemopen(buffer, len + 1, "r");
     yyparse();
-
     fclose(yyin);
 }
 

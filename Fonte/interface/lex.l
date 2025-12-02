@@ -24,6 +24,8 @@
 (?i:FROM)						return FROM;
 (?i:WHERE)						return WHERE;
 (?i:DELETE)						return DELETE;
+(?i:UPDATE)						return UPDATE;
+(?i:SET)						return SET;
 (?i:CREATE)						return CREATE;
 (?i:TABLE)						return TABLE;
 (?i:ON)						    return ON;
@@ -62,9 +64,8 @@ help							return HELP;
 [-+]?[0-9]*\.[0-9]*					{yylval.strval = yytext; return VALUE;};
 [-+]?[0-9]+							    {yylval.strval = yytext; return NUMBER;};
 ([%]|[/])       {yylval.strval = yytext; return OPERADOR;}
-
-([>][=]|[<][=]|[=]|[!][=]|[>]|[<]) {yylval.strval = yytext; return RELACIONAL;};
-
+"="                             {return '=';};
+([>][=]|[<][=]|[!][=]|[>]|[<]) {yylval.strval = yytext; return RELACIONAL;};
 \n								{
 									// if (GLOBAL_PARSER.mode != 0) {
 									// 	if (GLOBAL_PARSER.parentesis)

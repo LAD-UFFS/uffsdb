@@ -149,3 +149,10 @@ inf_where *novoResWhere(void *tk,int id);
 int verifyFieldName(char **, int );
 ////
 int verifyFK(char *, char *);
+
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Atualiza tuplas.
+    Parametros: Lista de tuplas, nome da tabela, dados do UPDATE.
+    Retorno:    Void.
+   ---------------------------------------------------------------------------------------------*/
+void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData);
