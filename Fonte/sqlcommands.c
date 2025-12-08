@@ -1315,11 +1315,71 @@ void createIndex(rc_insert *t) {
 
 
 /* ----------------------------------------------------------------------------------------------
-    Objetivo:   Atualiza tuplas (versão simplificada - não atualiza colunas indexadas).
-    Parametros: Lista de tuplas, nome da tabela, dados do UPDATE.
+    Objetivo:   Atualiza tuplas de uma tabela modificando diretamente os dados no buffer.
+    Parametros: Lista de tuplas a serem atualizadas (toUpdateTuples),
+                Nome da tabela (tabelaName),
+                Dados do UPDATE contendo colunas e valores (updateData).
     Retorno:    Void.
    ---------------------------------------------------------------------------------------------*/
 void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
-    printf("chegando no update\n");
+    struct fs_objects objeto;
+    tp_table *esquema;
+    table *tabela = (table *)uffslloc(sizeof(table));
+    char flag = 0;
+
+    // Abre a tabela e carrega esquema e objeto
+    abreTabela(tabelaName, &objeto, &tabela->esquema);
+    strcpylower(tabela->nome, tabelaName);
+    esquema = tabela->esquema;
+
+    DEBUG_PRINT("UPDATE - TableName <--------- %s", tabela->nome);
+
+    // Verifica se todas as colunas especificadas no UPDATE existem na tabela
+    if (!allColumnsExists(updateData, tabela)) {
+        freeTable(tabela);
+        return;
+    }
+
+    // Percorre o esquema da tabela verificando compatibilidade de tipos
+    for (esquema = tabela->esquema; esquema != NULL; esquema = esquema->next) {
+        
+        // Busca a posição da coluna do esquema nos dados do UPDATE
+        int updateFieldPos = -1;
+        for (int i = 0; i < updateData->N; i++) {
+            if (objcmp(updateData->columnName[i], esquema->nome) == 0) {
+                updateFieldPos = i;
+                break;
+            }
+        }
+
+        // Se a coluna está sendo atualizada, verifica compatibilidade de tipos
+        if (updateFieldPos >= 0) {
+            // Ajuste: String de 1 caractere pode ser convertida para CHAR
+            if (updateData->type[updateFieldPos] == 'S' && esquema->tipo == 'C') {
+                if (strlen(updateData->values[updateFieldPos]) == 1) {
+                    updateData->values[updateFieldPos][1] = '\0';
+                    updateData->type[updateFieldPos] = 'C';
+                }
+            }
+
+            // Ajuste: Inteiro pode ser convertido para DOUBLE
+            if (updateData->type[updateFieldPos] == 'I' && esquema->tipo == 'D') {
+                updateData->type[updateFieldPos] = 'D';
+            }
+
+            // Valida se os tipos são compatíveis
+            if (!typesCompatible(esquema->tipo, updateData->type[updateFieldPos])) {
+                printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n",
+                       esquema->nome, tabela->nome, esquema->tipo, updateData->type[updateFieldPos]);
+                flag = 1;
+            }
+        }
+    }
+
+    // Se houve erro de tipo, aborta a operação
+    if (flag) {
+        freeTable(tabela);
+        return;
+    }
 
 }
