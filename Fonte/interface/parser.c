@@ -191,6 +191,15 @@ void setColumnFKColumnCreate(char **nome) {
     GLOBAL_PARSER.step++;
 }
 
+// TODO: implementar isso aqui
+void setColumnUpdate(char **nome){
+    return;
+}
+
+void setValueUpdate(char *nome, char type){
+    return;
+}
+
 void limparLista(Lista *l){
   Nodo *k = l->prim,*j;
   while(k){
@@ -202,7 +211,7 @@ void limparLista(Lista *l){
 }
 
 void resetQuery() {
-    if(getMode() == OP_SELECT || getMode() == OP_DELETE) {
+    if(getMode() == OP_SELECT || getMode() == OP_DELETE || getMode() == OP_UPDATE) {
         if(QUERY.tabela) {
             QUERY.tabela = NULL;
         }
@@ -299,6 +308,9 @@ int interface() {
                                 op_delete(resultado, QUERY.tabela);
                                 resultado = NULL;
                             }
+                            break;
+                        case OP_UPDATE:
+                            // TODO: Adicionar a função do update
                             break;
                         case OP_CREATE_TABLE:
                             createTable(&GLOBAL_DATA);

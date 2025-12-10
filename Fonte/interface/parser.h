@@ -13,6 +13,7 @@
 #define OP_SELECT 		      6
 #define OP_CREATE_INDEX     7
 #define OP_DELETE           8
+#define OP_UPDATE           9
 
 #ifndef FCOMMANDHANDLER
    #include "commandHandler.h"
@@ -114,6 +115,10 @@ void setColumnBtreeCreate(char **nome);
  * irá referenciar
  */
 void setColumnFKTableCreate(char **nome);
+
+/* TODO */
+void setColumnUpdate(char **nome);
+void setValueUpdate(char *nome, char type);
 
 /* Define a coluna da tabela que a coluna identificada
  * no CREATE TABLE irá referenciar.
