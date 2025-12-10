@@ -24,6 +24,8 @@
 (?i:FROM)						return FROM;
 (?i:WHERE)						return WHERE;
 (?i:DELETE)						return DELETE;
+(?i:UPDATE)						return UPDATE;
+(?i:SET)						return SET;
 (?i:CREATE)						return CREATE;
 (?i:TABLE)						return TABLE;
 (?i:ON)						    return ON;
