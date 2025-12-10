@@ -300,6 +300,9 @@ int interface() {
                                 resultado = NULL;
                             }
                             break;
+                        case OP_UPDATE:
+                            op_update(&GLOBAL_DATA, &QUERY);
+                            break;
                         case OP_CREATE_TABLE:
                             createTable(&GLOBAL_DATA);
                             break;
@@ -330,6 +333,7 @@ int interface() {
                 case OP_SELECT:
                 case OP_INSERT:
                 case OP_CREATE_INDEX:
+                case OP_UPDATE:
                     if (GLOBAL_PARSER.step == 1) {
                         GLOBAL_PARSER.consoleFlag = 0;
                         printf("Expected object name.\n");

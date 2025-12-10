@@ -17,6 +17,8 @@
 
 %%
 
+(?i:UPDATE)						return UPDATE;
+(?i:SET)						return SET;
 (?i:INSERT)						return INSERT;
 (?i:INTO)						return INTO;
 (?i:VALUES)						return VALUES;

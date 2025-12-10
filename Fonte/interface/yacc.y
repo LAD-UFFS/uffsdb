@@ -50,9 +50,9 @@ int yywrap() {
         CLEAR       CONTR       WHERE       OPERADOR    RELACIONAL
         LOGICO      ASTERISCO   SINAL       FECHA_P     ABRE_P
         STRING      INDEX       ON          IMPLEMENT   HISTORY 
-        DELETE      DELETE_HISTORY;
+        DELETE      UPDATE      SET         DELETE_HISTORY;
 %%
-start: insert | select | delete | create_table | create_database | drop_table | drop_database
+start: insert | select | delete | update | create_table | create_database | drop_table | drop_database
      | table_attr | list_tables | connection | exit_program | semicolon {GLOBAL_PARSER.consoleFlag = 1; return 0;}
      | help_pls | list_databases | clear | contributors | create_index | history_pls | delete_history_pls
      | qualquer_coisa | implement | /*epsilon*/;
@@ -121,6 +121,12 @@ contributors: CONTR {contr(); GLOBAL_PARSER.consoleFlag = 1; return 0;}
 /*--------------------------------------------------*/
 /****************** SQL STATEMENTS ******************/
 /*--------------------------------------------------*/
+
+/* UPDATE */
+update: UPDATE {setMode(OP_UPDATE);} table SET column RELACIONAL value where semicolon {
+    GLOBAL_DATA.N = GLOBAL_PARSER.col_count;
+    return 0;
+}; 
 
 /* INSERT */
 insert: INSERT INTO {setMode(OP_INSERT);} table opt_column_list VALUES parentesis_open value_list parentesis_close semicolon {

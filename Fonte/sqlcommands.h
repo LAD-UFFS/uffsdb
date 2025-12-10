@@ -149,3 +149,6 @@ inf_where *novoResWhere(void *tk,int id);
 int verifyFieldName(char **, int );
 ////
 int verifyFK(char *, char *);
+
+void op_update(rc_insert *, inf_query *);
+

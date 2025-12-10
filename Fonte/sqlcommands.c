@@ -1311,3 +1311,24 @@ void createIndex(rc_insert *t) {
 }
 
 ///////
+
+void op_update(rc_insert *data, inf_query *query) {
+    printf("DEBUG: Informações que chegaram:\n");
+    printf("Tabela: %s\n", data->objName);
+    printf("Colunas: ");
+    for(int i = 0; i < data->N; i++) {
+        printf("%s ", data->columnName[i]);
+    }
+    printf("\n");
+    printf("Valores: ");
+    for(int i = 0; i < data->N; i++) {
+        printf("%s ", data->values[i]);
+    }
+    printf("\n");
+    printf("WHERE: \n");
+    printf("Quantidade de tokens: %d\n", query->tamTokens);
+    // for(int i = 0; i < query->tamTokens; i++) {
+    //     printf("")
+    // }
+    printf("\n");
+}
