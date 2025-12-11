@@ -850,6 +850,9 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 
 }
 
+// TODOO: implementar a função de update
+void op_update(Lista *resultado, char *tabela, Lista *colunas, Lista *valores){};
+
 int afterTrigger(Lista *resultado, inf_query *query) {
     tp_table *fkColumns = verificaIntegridade(query->tabela);
     for(tp_table *temp = fkColumns; temp; temp = temp->next) {

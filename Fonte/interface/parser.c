@@ -192,11 +192,45 @@ void setColumnFKColumnCreate(char **nome) {
 }
 
 // TODO: implementar isso aqui
+//Coluna que será aualizada
 void setColumnUpdate(char **nome){
+
+    GLOBAL_DATA.columnName = uffsRealloc(GLOBAL_DATA.columnName, (GLOBAL_PARSER.col_count+1)*sizeof(char *));
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count] = uffslloc(sizeof(char)*(strlen(*nome)+1));
+    strcpylower(GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count], *nome);
+    GLOBAL_DATA.columnName[GLOBAL_PARSER.col_count][strlen(*nome)] = '\0';
+
+    GLOBAL_PARSER.col_count++;
     return;
 }
 
+//valor que será atualizado
 void setValueUpdate(char *nome, char type){
+    int i;
+    GLOBAL_DATA.values  = uffsRealloc(GLOBAL_DATA.values, (GLOBAL_PARSER.val_count+1)*sizeof(char *));
+    GLOBAL_DATA.type    = uffsRealloc(GLOBAL_DATA.type, (GLOBAL_PARSER.val_count+1)*sizeof(char));
+
+    /* Aloca espaço suficiente para a string (inclui '\0') */
+    GLOBAL_DATA.values[GLOBAL_PARSER.val_count] = uffslloc(sizeof(char)*(strlen(nome)+1));
+
+    if (type == 'I' || type == 'D') {
+        /* Inteiros e doubles */
+        strcpy(GLOBAL_DATA.values[GLOBAL_PARSER.val_count], nome);
+        GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)] = '\0';
+    } else if (type == 'S') {
+        /* Strings vêm entre aspas: remover aspas iniciais/finais */
+        for (i = 1; i < (int)strlen(nome)-1; i++) {
+            GLOBAL_DATA.values[GLOBAL_PARSER.val_count][i-1] = nome[i];
+        }
+        GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)-2] = '\0';
+    } else {
+        strcpy(GLOBAL_DATA.values[GLOBAL_PARSER.val_count], nome);
+        GLOBAL_DATA.values[GLOBAL_PARSER.val_count][strlen(nome)] = '\0';
+    }
+
+    GLOBAL_DATA.type[GLOBAL_PARSER.val_count] = type;
+
+    GLOBAL_PARSER.val_count++;
     return;
 }
 
@@ -310,7 +344,12 @@ int interface() {
                             }
                             break;
                         case OP_UPDATE:
-                            // TODO: Adicionar a função do update
+                            case OP_UPDATE:
+                            resultado = handleTableOperation(&QUERY, 'u');
+                            if (resultado && afterTrigger(resultado, &QUERY)) {
+                               op_update(resultado, QUERY.tabela, GLOBAL_DATA.columnName, GLOBAL_DATA.values);
+                               resultado = NULL;
+                            }
                             break;
                         case OP_CREATE_TABLE:
                             createTable(&GLOBAL_DATA);
