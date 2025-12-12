@@ -149,3 +149,12 @@ inf_where *novoResWhere(void *tk,int id);
 int verifyFieldName(char **, int );
 ////
 int verifyFK(char *, char *);
+
+
+
+/* OBjetivo: Atualizar os valores das tuplas com base nos dados no set.
+  Parâmetros: Listac com as tuplas a serem atualizadas, estrutura com colunas/valores (SET), nome da tabela.
+  Retorno: Número de linhas atualizadas.
+*/
+
+int op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName);

@@ -851,7 +851,25 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 }
 
 // TODOO: implementar a função de update
-void op_update(Lista *resultado, char *tabela, Lista *colunas, Lista *valores){};
+void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName){
+    if (!tuplesToUpdate || !tuplesToUpdate->tam) return 0;
+
+    tp_table *esquema;
+    struct fs_objects objeto;
+    tp_buffer *bufferpoll;
+
+    if (!verificaNomeTabela(tableName)) {
+        printf("\nERRO: relação \"%s\" não foi encontrada.\n\n\n", tableName);
+        return;
+    }
+    objeto = leObjeto(tableName);
+    esquema = leSchema(objeto);
+
+    bufferpoll = initbuffer();
+    //verificar buffer
+
+
+};
 
 int afterTrigger(Lista *resultado, inf_query *query) {
     tp_table *fkColumns = verificaIntegridade(query->tabela);
