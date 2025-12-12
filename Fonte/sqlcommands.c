@@ -864,15 +864,12 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
 
-    // PARA FAZER: o bufferpool pode voltar com erro de alocação,
-    // é necessario descobrir como tratar isso
+
     if (bufferpool == ERRO_DE_ALOCACAO) {
         printf("ERROR: no memory available to allocate buffer.\n");
         return 0;
     }
 
-    // PARA FAZER: o bufferpool foi criado vazio, precisamos preencher ele com dados
-    // o op_delete acima faz um processo parecido 
     int pageCount = 0, erro;
     do {
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
