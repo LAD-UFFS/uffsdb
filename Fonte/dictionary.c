@@ -285,14 +285,22 @@ struct fs_objects leObjetoById(int idTabela){
     return objeto;
 }
 
+/*
+ * Procura a tabela no arquivo de dicionario de dados
+ *
+ * Retorna um struct fs_objects (types.h) preenchido com os valores da tabela.
+ * Em certos casos retorna lixo.
+ */
 struct fs_objects leObjeto(char *nomeTabela) {
-
     FILE *dicionario;
+
     char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
+
     int cod;
     int i = 0;
 
+    // As partes abaixo criam o "path" para o arquivo do dicionario
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
@@ -300,6 +308,13 @@ struct fs_objects leObjeto(char *nomeTabela) {
     dicionario = fopen(directory, "a+b"); // Abre o dicionario de dados.
 
     struct fs_objects objeto;
+
+    /* 
+     *   Para os dois proximos casos "objeto" ainda esta indeterminado.
+     *   Caso ele retornar, quem o chama precisa ter cuidado (recebera lixo)
+     *
+     *   um erro seria mais apropriado.
+     */
 
     if(!verificaNomeTabela(nomeTabela)){
         printf("ERROR: relation \"%s\" was not found.\n", nomeTabela);
@@ -314,22 +329,41 @@ struct fs_objects leObjeto(char *nomeTabela) {
         return objeto;
     }
 
+    /*
+     * Enquanto o arquivo não chegar ao final faz a leitura
+     */
+    while(fgetc(dicionario) != EOF){
+        /*
+         * O loop acima usa um fgetc que le 1 byte do dicionario para checar fim de arquivo.
+         * Por essa razão, eh preciso voltar um byte com o fseek para leitura correta.
+         */
+        fseek(dicionario, -1, SEEK_CUR);
 
-    while(fgetc (dicionario) != EOF){
-        fseek(dicionario, -1, 1);
-
-        fread(tupla, sizeof(char), TAMANHO_NOME_TABELA , dicionario); //Lê somente o nome da tabela
-
-        if(objcmp(tupla, nomeTabela) == 0){ // Verifica se o nome dado pelo usuario existe no dicionario de dados.
+        // Le a "tupla" e em sequencia compara com o nome da tabela passado como parametro
+        fread(tupla, sizeof(char), TAMANHO_NOME_TABELA , dicionario); 
+        if(objcmp(tupla, nomeTabela) == 0){ 
             strcpylower(objeto.nome, tupla);
-            fread(&cod,sizeof(int),1,dicionario);   // Copia valores referentes a tabela pesquisada para a estrutura.
+
+            /* 
+             * Abaixo, precisamos ler um fs_object que tem os campos ->
+             * (nome da tabela, cod, nome do arquivo, qtd campos e qtd indice)
+             */
+
+            // Codigo da tabela .
+            fread(&cod, sizeof(int), 1, dicionario); 
             objeto.cod=cod;
-            fread(tupla,sizeof(char),TAMANHO_NOME_TABELA,dicionario);
+
+            // Nome do arquivo de dados.
+            fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario);
             strcpylower(objeto.nArquivo, tupla);
-            fread(&cod,sizeof(int),1,dicionario);
+
+            // Quantidade de campos
+            fread(&cod, sizeof(int), 1, dicionario);
             objeto.qtdCampos = cod;
-      			fread(&i,sizeof(int),1,dicionario);
-      			objeto.qtdIndice = i;
+
+            // Quantidade de indices
+            fread(&i, sizeof(int), 1, dicionario);
+            objeto.qtdIndice = i;
 
             fclose(dicionario);
             return objeto;
@@ -337,30 +371,42 @@ struct fs_objects leObjeto(char *nomeTabela) {
         fseek(dicionario, 32, 1); // Pula a quantidade de caracteres para a proxima verificacao(4B do codigo, 20B do nome do arquivo e 4B da quantidade de campos).
     }
     fclose(dicionario);
-
     return objeto;
 }
 
-//
-// LEITURA DE DICIONARIO E ESQUEMA
+/*
+ * LEITURA DE DICIONARIO E ESQUEMA
+ *
+ * Utilizando um fs_objects (possui informacao de uma tabela)
+ * é feita a leitura de um tp_table que possui informações sobre o "schema"
+ * retorna um tp_table preenchido
+ */
 tp_table *leSchema (struct fs_objects objeto){
     FILE *schema;
     int i = 0, cod = 0;
-    char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_CAMPO);
-    memset(tupla, 0, TAMANHO_NOME_CAMPO);
-    char *tuplaT = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA+1);
-    memset(tuplaT, 0, TAMANHO_NOME_TABELA+1);
 
-    tp_table *esquema = (tp_table *)uffslloc(sizeof(tp_table)*(objeto.qtdCampos+1)); // Aloca esquema com a quantidade de campos necessarios.
-    memset(esquema, 0, (objeto.qtdCampos+1)*sizeof(tp_table));
-    for (i = 0; i < objeto.qtdCampos+1; i++)  esquema[i].next = NULL;
+    // String para nome do campo
+    char *tupla  = (char*)uffslloc(sizeof(char) * TAMANHO_NOME_CAMPO);
+    memset(tupla, 0, TAMANHO_NOME_CAMPO);
+
+    // String para nome da tabela
+    char *tuplaT = (char*)uffslloc(sizeof(char) * TAMANHO_NOME_TABELA + 1);
+    memset(tuplaT, 0, TAMANHO_NOME_TABELA + 1);
+
+     // Aloca lista de esquemas com a quantidade de campos necessarios.
+    tp_table *esquema = (tp_table *)uffslloc(sizeof(tp_table) * (objeto.qtdCampos + 1));
+    memset(esquema, 0, (objeto.qtdCampos + 1) * sizeof(tp_table));
+
+    for (i = 0; i < objeto.qtdCampos + 1; i++){
+        esquema[i].next = NULL;
+    }
 
     i = 0;
     if(esquema == NULL){
-
         return ERRO_DE_ALOCACAO;
     }
 
+    // As partes abaixo criam o "path" para o arquivo do dicionario
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
@@ -371,25 +417,39 @@ tp_table *leSchema (struct fs_objects objeto){
         return ERRO_ABRIR_ESQUEMA;
     }
 
-    while((fgetc (schema) != EOF) && (i < objeto.qtdCampos)){ // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
-        fseek(schema, -1, 1);
+    // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
+    while((fgetc(schema) != EOF) && (i < objeto.qtdCampos)){ 
+        /*
+         * O loop acima usa um fgetc que le 1 byte para checar fim de arquivo.
+         * Por essa razão, eh preciso voltar um byte com o fseek para leitura correta.
+         */
+        fseek(schema, -1, SEEK_CUR);
 
         if(fread(&cod, sizeof(int), 1, schema)){ // Le o codigo da tabela.
-            if(cod == objeto.cod){ // Verifica se o campo a ser copiado e da tabela que esta na estrutura fs_objects.
+            if(cod == objeto.cod){ // Verifica se código da tabela lido eh igual ao que esta na estrutura fs_objects.
+
+                /*
+                 * Abaixo é feita a leitura dos campos do struct tp_table 
+                 */
+
+                // Nome campo
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
-                strcpylower(esquema[i].nome,tupla);                  // Copia dados do campo para o esquema.
+                strcpylower(esquema[i].nome, tupla); // Copia dados do campo para o esquema.
 
-                fread(&esquema[i].tipo, sizeof(char),1,schema);
-                fread(&esquema[i].tam, sizeof(int),1,schema);
-                fread(&esquema[i].chave, sizeof(int),1,schema);
+                fread(&esquema[i].tipo,  sizeof(char), 1, schema); // Tipo do campo
+                fread(&esquema[i].tam,   sizeof(int),  1, schema); // Tamanho do campo
+                fread(&esquema[i].chave, sizeof(int),  1, schema); // Tipo da chave
 
+                // Nome da tabela apontada
                 fread(tuplaT, sizeof(char), TAMANHO_NOME_TABELA, schema);
                 strcpylower(esquema[i].tabelaApt,tuplaT);
 
+                // Nome do atributo apontado
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
                 strcpylower(esquema[i].attApt,tupla);
 
-                if (i > 0) esquema[i-1].next = &esquema[i];
+                //encadeia os esquemas 
+                if (i > 0) esquema[i - 1].next = &esquema[i];
                 i++;
             }
             else {
@@ -397,8 +457,8 @@ tp_table *leSchema (struct fs_objects objeto){
             }
         }
     }
+    // Finaliza o encadeamento e retorna
     esquema[i].next = NULL;
-
     fclose(schema);
     return esquema;
 }
