@@ -347,7 +347,7 @@ int interface() {
                             case OP_UPDATE:
                             resultado = handleTableOperation(&QUERY, 'u');
                             if (resultado && afterTrigger(resultado, &QUERY)) {
-                               op_update(resultado, QUERY.tabela, GLOBAL_DATA.columnName, GLOBAL_DATA.values);
+                               op_update(resultado, &GLOBAL_DATA, QUERY.tabela);
                                resultado = NULL;
                             }
                             break;

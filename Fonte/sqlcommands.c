@@ -851,25 +851,98 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 }
 
 // TODOO: implementar a função de update
-void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName){
+
+void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     if (!tuplesToUpdate || !tuplesToUpdate->tam) return 0;
 
     tp_table *esquema;
     struct fs_objects objeto;
     tp_buffer *bufferpoll;
-
-    if (!verificaNomeTabela(tableName)) {
-        printf("\nERRO: relação \"%s\" não foi encontrada.\n\n\n", tableName);
-        return;
-    }
+    
     objeto = leObjeto(tableName);
     esquema = leSchema(objeto);
 
     bufferpoll = initbuffer();
-    //verificar buffer
 
+    int countUpdated = 0;
 
-};
+    for (Nodo *no = tuplesToUpdate->prim; no; no = no->prox) {
+        tupla *t = (tupla *)no->inf;
+        
+    // pega o ponteiro para o inicio da tupla
+        char *tuplePtr = bufferpoll[t->bufferPage].data + t->offset;
+        
+        char *nullFlags = tuplePtr + 1; 
+        
+    // ponteiro para o início dos dados
+        char *dataPtr = tuplePtr + 1 + objeto.qtdCampos;
+
+        for (int i = 0; i < updateData->N; i++) {
+            char *colName = updateData->columnName[i];
+            char *newValStr = updateData->values[i];
+            
+    // busca a coluna no esquema para saber tipo, tamanho e offset
+            tp_table *temp = esquema;
+            int currentOffset = 0;
+            int colIndex = 0;
+
+            while (temp != NULL) {
+                if (objcmp(temp->nome, colName) == 0) {
+                    // deu boa achar a coluna, agora converte e escreve.
+
+                    nullFlags[colIndex] = 0;
+
+                    void *valToWrite = NULL;
+                    int intVal;
+                    double doubleVal;
+                    char charVal;
+                    
+                    // conversão de tipos 
+                    if (temp->tipo == 'I') {
+                        intVal = atoi(newValStr);
+                        valToWrite = &intVal;
+                    } else if (temp->tipo == 'D') {
+                        doubleVal = atof(newValStr);
+                        valToWrite = &doubleVal;
+                    } else if (temp->tipo == 'C') {
+                        charVal = newValStr[0];
+                        valToWrite = &charVal;
+                    } else if (temp->tipo == 'S') {
+                        // para varchar, copiamos direto a string
+                        memset(dataPtr + currentOffset, 0, temp->tam);
+                        strncpy(dataPtr + currentOffset, newValStr, temp->tam - 1); 
+                    }
+
+                    if (temp->tipo != 'S' && valToWrite) {
+                         memcpy(dataPtr + currentOffset, valToWrite, temp->tam);
+                    }
+
+                    // marca a pagina como suja
+                    bufferpoll[t->bufferPage].db = 1;
+                    break;
+                }
+                
+                currentOffset += temp->tam;
+                colIndex++;
+                temp = temp->next;
+            }
+        }
+        countUpdated++;
+    }
+
+    for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
+        if (bufferpoll[p].db) { // so grava se estiver sujo
+
+            int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll->nrec * tamTupla(esquema, objeto));
+            if (!result) {
+                printf("ERROR: failed to persist changes to disk\n");
+            }
+        }
+    }
+
+    printf("UPDATE %d\n", countUpdated);
+   return;
+}
 
 int afterTrigger(Lista *resultado, inf_query *query) {
     tp_table *fkColumns = verificaIntegridade(query->tabela);
@@ -967,7 +1040,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     if(abortar) resultado = NULL;
     
 
-    return resultado;
+    return;
 }
 
 /* ----------------------------------------------------------------------------------------------

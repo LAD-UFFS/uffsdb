@@ -152,9 +152,9 @@ int verifyFK(char *, char *);
 
 
 
-/* OBjetivo: Atualizar os valores das tuplas com base nos dados no set.
-  Parâmetros: Listac com as tuplas a serem atualizadas, estrutura com colunas/valores (SET), nome da tabela.
-  Retorno: Número de linhas atualizadas.
+/* OBjetivo: Atualizar os valores das tuplas com base nos dados.
+  Parâmetros: Listac com as tuplas a serem atualizadas, dados do update, nome da tabela.
+  Retorno: void
 */
 
-int op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName);
+void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName);
