@@ -870,6 +870,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
         return 0;
     }
 
+	// Aqui o buffer é preenchido com tuplas a serem atualizadas
     int pageCount = 0, erro;
     do {
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
