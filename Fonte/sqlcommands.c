@@ -1313,16 +1313,54 @@ void createIndex(rc_insert *t) {
 ///////
 
 int op_update(rc_insert *data, inf_query *query) {
-    // tp_table *esquema;
-    // struct fs_objects obj;
-    // obj = leObjeto(data->objName);
-    // esquema = leSchema(obj);
-    
+    tp_table *esquema;
+    struct fs_objects obj;
+    tp_buffer *buffer;
+    int i, erro;
+
+    // validar se tabea existe
     if (!verificaNomeTabela(data->objName)) {
         printf("ERROR: table \"%s\" does not exist.\n", data->objName);
         return ERRO_NOME_TABELA;
     }
 
+    obj = leObjeto(data->objName);
+    esquema = leSchema(obj);
+
+    // validar se schema existe
+    if (esquema == ERRO_ABRIR_ESQUEMA) {
+        printf("ERROR: cannot read schema.\n");
+        return ERRO_ABRIR_ARQUIVO;
+    }
+
+    // validar se o atributo que será alterado existem
+    for (i = 0; i < data->N; i++){
+        int found = 0;
+        for (tp_table *aux = esquema; aux != NULL; aux = aux->next){
+            if(strcmp(aux->nome, data->columnName[i]) == 0) {
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            printf("ERROR: attribute \"%s\" does not exist on table %s.\n", data->columnName[i], data->objName);
+            return ERRO_NOME_CAMPO;
+        }
+    }
+
+    buffer = initbuffer();
+    if(buffer == ERRO_DE_ALOCACAO) {
+        printf("ERROR: cannot allocate memory for buffer.");
+        return ERRO_VAZIO;
+    }
+
+    // carregar todas as tuplas na memória
+    int pageCount = 0;
+    do {
+        erro = colocaTuplaBuffer(buffer, pageCount, esquema, data->objName);
+        pageCount++;
+    } while (erro == SUCCESS);
+    pageCount--;
+
     return SUCCESS;
-    
 }
