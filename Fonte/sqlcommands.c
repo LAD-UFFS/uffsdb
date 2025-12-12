@@ -859,26 +859,32 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     struct fs_objects objeto;
     tp_buffer *bufferpoll;
     
-    objeto = leObjeto(tableName);
+    // fs_objects com informações da tabela
+    objeto  = leObjeto(tableName);
+    // Lista de tp_tables preenchidas com informações dos campos da tabela "objeto"
     esquema = leSchema(objeto);
 
-    bufferpoll = initbuffer();
+    // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
+    bufferpool = initbuffer();
 
+    // PARA FAZER: o bufferpool pode voltar com erro de alocação,
+    // é necessario descobrir como tratar isso
+
+    // PARA FAZER: o bufferpool foi criado vazio, precisamos preencher ele com dados
+    // o op_update acima faz um processo parecido 
+    
     int countUpdated = 0;
-
-    for (Nodo *no = tuplesToUpdate->prim; no; no = no->prox) {
+    for (Nodo *no = tuplesToUpdate->prim; no != NULL; no = no->prox) {
         tupla *t = (tupla *)no->inf;
-        
-    // pega o ponteiro para o inicio da tupla
-        char *tuplePtr = bufferpoll[t->bufferPage].data + t->offset;
-        
+
+        char *tuplePtr  = bufferpoll[t->bufferPage].data + t->offset;
         char *nullFlags = tuplePtr + 1; 
         
     // ponteiro para o início dos dados
         char *dataPtr = tuplePtr + 1 + objeto.qtdCampos;
 
         for (int i = 0; i < updateData->N; i++) {
-            char *colName = updateData->columnName[i];
+            char *colName   = updateData->columnName[i];
             char *newValStr = updateData->values[i];
             
     // busca a coluna no esquema para saber tipo, tamanho e offset
