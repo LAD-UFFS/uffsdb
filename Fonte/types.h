@@ -74,7 +74,7 @@ typedef struct  inf_query {
   int tamTokens;    // Número de tokens na cláusula WHERE
   Lista *tok;       // Lista de condições WHERE
   Lista *proj;      // Colunas recuperadas (NULL para DELETE)
-  char queryType;   // 'S' for SELECT, 'D' for DELETE
+  char queryType;   // 'S' for SELECT, 'D' for DELETE, 'U' for UPDATE
 } inf_query;
 
 typedef struct rc_parser {
