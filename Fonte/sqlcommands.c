@@ -850,20 +850,17 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 
 }
 
-// TODOO: implementar a função de update
-
 void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     if (!tuplesToUpdate || !tuplesToUpdate->tam) return 0;
 
     tp_table *esquema;
     struct fs_objects objeto;
-    tp_buffer *bufferpoll;
+    tp_buffer *bufferpool;
     
     // fs_objects com informações da tabela
     objeto  = leObjeto(tableName);
     // Lista de tp_tables preenchidas com informações dos campos da tabela "objeto"
     esquema = leSchema(objeto);
-
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
 
@@ -871,23 +868,23 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     // é necessario descobrir como tratar isso
 
     // PARA FAZER: o bufferpool foi criado vazio, precisamos preencher ele com dados
-    // o op_update acima faz um processo parecido 
+    // o op_delete acima faz um processo parecido 
     
     int countUpdated = 0;
     for (Nodo *no = tuplesToUpdate->prim; no != NULL; no = no->prox) {
         tupla *t = (tupla *)no->inf;
 
-        char *tuplePtr  = bufferpoll[t->bufferPage].data + t->offset;
+        char *tuplePtr  = bufferpool[t->bufferPage].data + t->offset;
         char *nullFlags = tuplePtr + 1; 
         
-    // ponteiro para o início dos dados
+        // ponteiro para o início dos dados
         char *dataPtr = tuplePtr + 1 + objeto.qtdCampos;
 
         for (int i = 0; i < updateData->N; i++) {
             char *colName   = updateData->columnName[i];
             char *newValStr = updateData->values[i];
-            
-    // busca a coluna no esquema para saber tipo, tamanho e offset
+
+            // busca a coluna no esquema para saber tipo, tamanho e offset
             tp_table *temp = esquema;
             int currentOffset = 0;
             int colIndex = 0;
@@ -897,21 +894,17 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                     // deu boa achar a coluna, agora converte e escreve.
 
                     nullFlags[colIndex] = 0;
-
                     void *valToWrite = NULL;
-                    int intVal;
-                    double doubleVal;
-                    char charVal;
-                    
+
                     // conversão de tipos 
                     if (temp->tipo == 'I') {
-                        intVal = atoi(newValStr);
+                        int intVal = atoi(newValStr);
                         valToWrite = &intVal;
                     } else if (temp->tipo == 'D') {
-                        doubleVal = atof(newValStr);
+                        double doubleVal = atof(newValStr);
                         valToWrite = &doubleVal;
                     } else if (temp->tipo == 'C') {
-                        charVal = newValStr[0];
+                        char charVal = newValStr[0];
                         valToWrite = &charVal;
                     } else if (temp->tipo == 'S') {
                         // para varchar, copiamos direto a string
@@ -924,10 +917,9 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                     }
 
                     // marca a pagina como suja
-                    bufferpoll[t->bufferPage].db = 1;
+                    bufferpool[t->bufferPage].db = 1;
                     break;
                 }
-                
                 currentOffset += temp->tam;
                 colIndex++;
                 temp = temp->next;
@@ -936,10 +928,9 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
         countUpdated++;
     }
 
-    for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
-        if (bufferpoll[p].db) { // so grava se estiver sujo
-
-            int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll->nrec * tamTupla(esquema, objeto));
+    for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
+        if (bufferpool[p].db) { // so grava se estiver sujo
+            int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool->nrec * tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
             }
@@ -970,25 +961,32 @@ int afterTrigger(Lista *resultado, inf_query *query) {
 }
 
 Lista *handleTableOperation(inf_query *query, char tipo) {
+    // tp_table (types.c) guarda informação sobre os campos da tabela
     tp_table *esquema;
     tp_buffer *bufferpoll;
+    // fs_objects (types.c) guarda informação sobre a tabela
     struct fs_objects objeto;
+
     if(!verificaNomeTabela(query->tabela)){
         printf("\nERROR: relation \"%s\" was not found.\n\n\n", query->tabela);
         return NULL;
     }
+
     objeto = leObjeto(query->tabela);
     esquema = leSchema(objeto);
+
     if(esquema == ERRO_ABRIR_ESQUEMA){
         printf("ERROR: schema cannot be created.\n");
         return NULL;
     }
+
     bufferpoll = initbuffer();
     if(bufferpoll == ERRO_DE_ALOCACAO){
         printf("ERROR: no memory available to allocate buffer.\n");
         return NULL;
     }
 
+    // Coloca todas as tuplas do objeto/schema no buffer
     int pageCount = 0, erro;
     do {
         erro = colocaTuplaBuffer(bufferpoll, pageCount, esquema, objeto);
@@ -997,6 +995,8 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     pageCount--; // ajusta para o número correto de páginas lidas
 
     int *indiceProj = NULL, qtdCamposProj = 0;
+
+    // Operação realizada apenas para o "s" -> select
     if(tipo == 's') {
         indiceProj = (int *)uffslloc(sizeof(int) * query->proj->tam);
         if(!validaProj(query->proj, esquema, objeto.qtdCampos, indiceProj)){
@@ -1010,6 +1010,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
         printf("Tabela vazia.\n");
         return NULL;
     }
+
     if(!validaColsWhere(query->tok, esquema, objeto.qtdCampos)){
         return NULL;
     }
@@ -1044,8 +1045,6 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
 
     }
     if(abortar) resultado = NULL;
-    
-
     return;
 }
 
