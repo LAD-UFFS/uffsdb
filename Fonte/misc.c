@@ -196,18 +196,6 @@ void implement() {
     printf("Subconsultas\n");
 }
 
-/*
- * Compara duas strings lexicograficamente.
- *
- * Converte cada caractere para minúsculo e, ao encontrar o primeiro par
- * de caracteres diferentes, retorna (a - b).
- *
- * Caso todos os caracteres avaliados sejam iguais até o fim de uma das
- * strings, retorna a diferença entre os caracteres atuais, o que pode ser
- * positivo, negativo ou zero.
- *
- * Retorna: Valor negativo se obj < str; zero se forem equivalentes; valor positivo se obj > str.
- */
 int objcmp(char *obj, char *str) {
 	int i;
     char a, b;

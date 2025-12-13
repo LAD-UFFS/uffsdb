@@ -713,7 +713,7 @@ int validaColsWhere(Lista *tok,tp_table *colunas,int qtdColunas){
       for(int j = 0; !achou && j < qtdColunas; j++)
         achou = (strcmp(str,colunas[j].nome) == 0);
       if(!achou){
-        printf("A coluna %s não pertene a tabela.\n",str);
+        printf("A coluna %s não pertence a tabela.\n",str);
         return 0;
       }
     }
@@ -844,10 +844,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
             return;
         }
     }
-
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
-
-
 }
 
 void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
@@ -855,8 +852,9 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
 
     tp_table *esquema;
     struct fs_objects objeto;
+    //Lista de buffers para as tuplas com tamanho da constante PAGES
     tp_buffer *bufferpool;
-    
+
     // fs_objects com informações da tabela
     objeto  = leObjeto(tableName);
     // Lista de tp_tables preenchidas com informações dos campos da tabela "objeto"
@@ -864,46 +862,50 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
 
-
     if (bufferpool == ERRO_DE_ALOCACAO) {
-        printf("ERROR: no memory available to allocate buffer.\n");
+        printf("ERROR: memória insuficiente para alocar o buffer.\n");
         return 0;
     }
 
-	// Aqui o buffer é preenchido com tuplas a serem atualizadas
+	// preenchimento do buffer com base na tabela e campos
     int pageCount = 0, erro;
     do {
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
         pageCount++;
     } while(erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
-    
+
     int countUpdated = 0;
     for (Nodo *no = tuplesToUpdate->prim; no != NULL; no = no->prox) {
-        tupla *t = (tupla *)no->inf;
+        tupla *t = (tupla*)no->inf;
+
+        /*
+         * A estrutura das páginas na memória é:
+         * 1 byte de "deleted", 1 byte por campo para checar NULL, seguido dos dados.
+         */
 
         char *tuplePtr  = bufferpool[t->bufferPage].data + t->offset;
+        // ponteiro para a parte de campos NULL (pula o byte de "deleted")
         char *nullFlags = tuplePtr + 1; 
-        
-        // ponteiro para o início dos dados
+        // Ponteiro para o início dos dados
         char *dataPtr = tuplePtr + 1 + objeto.qtdCampos;
 
-        for (int i = 0; i < updateData->N; i++) {
+        for (int i = 0; i < updateData->N; i++) { 
             char *colName   = updateData->columnName[i];
             char *newValStr = updateData->values[i];
 
-            // busca a coluna no esquema para saber tipo, tamanho e offset
+            // O esquema guarda info dos campos
             tp_table *temp = esquema;
             int currentOffset = 0;
             int colIndex = 0;
 
+            // Busca dos campos necessários no "esquema"
             while (temp != NULL) {
                 if (objcmp(temp->nome, colName) == 0) {
-                    // deu boa achar a coluna, agora converte e escreve.
-
+                    // Deu boa achar a coluna, agora converte e escreve.
                     nullFlags[colIndex] = 0;
                     void *valToWrite = NULL;
 
-                    // conversão de tipos 
+                    // Conversão de tipos 
                     if (temp->tipo == 'I') {
                         int intVal = atoi(newValStr);
                         valToWrite = &intVal;
@@ -914,7 +916,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                         char charVal = newValStr[0];
                         valToWrite = &charVal;
                     } else if (temp->tipo == 'S') {
-                        // para varchar, copiamos direto a string
+                        // Para varchar, copiamos direto a string
                         memset(dataPtr + currentOffset, 0, temp->tam);
                         strncpy(dataPtr + currentOffset, newValStr, temp->tam - 1); 
                     }
@@ -923,7 +925,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                          memcpy(dataPtr + currentOffset, valToWrite, temp->tam);
                     }
 
-                    // marca a pagina como suja
+                    // Marca a pagina como suja
                     bufferpool[t->bufferPage].db = 1;
                     break;
                 }
@@ -936,16 +938,16 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     }
 
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
-        if (bufferpool[p].db) { // so grava se estiver sujo
-            int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool->nrec * tamTupla(esquema, objeto));
+        // so grava se estiver sujo
+        if (bufferpool[p].db){ 
+            int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
             }
         }
     }
-
     printf("UPDATE %d\n", countUpdated);
-   return;
+    return;
 }
 
 int afterTrigger(Lista *resultado, inf_query *query) {

@@ -56,6 +56,14 @@ tupla * getPage(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, i
 */
 column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
 ////
+/*
+   Lê uma tupla no arquivo de dados
+ 
+   Calcula o deslocamento com base no índice "from"
+ 
+   Retorna o ponteiro para a tupla alocada dinamicamente
+   ou ERRO_DE_LEITURA em caso de falha
+*/
 char *getTupla(tp_table *campos,struct fs_objects objeto, int from);
 
 void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos);

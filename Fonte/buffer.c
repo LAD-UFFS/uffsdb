@@ -17,9 +17,8 @@
 static int isDeleted(char *linha);
 
 // INICIALIZACAO DO BUFFER
-tp_buffer * initbuffer() {
+tp_buffer *initbuffer() {
     tp_buffer *bp = (tp_buffer*)uffslloc(PAGES * sizeof(tp_buffer));
-
     return bp == NULL ? ERRO_DE_ALOCACAO : bp;
 }
 
@@ -59,7 +58,7 @@ tupla *getPage(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, in
     if (!buffer[page].position)
         return tuplas;
 
-    char* nullos =(char *)uffslloc(objeto.qtdCampos * sizeof(char));
+    char* nullos = (char *)uffslloc(objeto.qtdCampos * sizeof(char));
 
     while(i < buffer[page].position){
         
@@ -131,59 +130,72 @@ column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objec
 
     return tuplas; //Retorna a tupla excluida do buffer
 }
-// INSERE UMA TUPLA NO BUFFER!
-char *getTupla(tp_table *campos,struct fs_objects objeto, int from){ //Pega uma tupla do disco a partir do valor de from
-    // + qtdCampos para os bytes de coluna null e +1 para o byte de tupla valida
-    int tamTpl = tamTupla(campos, objeto); 
-    char *linha=(char *)uffslloc(sizeof(char)*tamTpl);
+
+char *getTupla(tp_table *campos, struct fs_objects objeto, int from){ 
+    // Tamanho total da tupla (inclui bytes de controle definidos em tamTupla)
+    int tamTpl = tamTupla(campos, objeto);
+    char *linha=(char*)uffslloc(sizeof(char)*tamTpl);
 
     FILE *dados;
+    // Converte o índice lógico da tupla para deslocamento em bytes
     from = from * tamTpl;
-	char directory[LEN_DB_NAME_IO];
+
+    // Cria o "path" e abre o arquivo do dicionário de dados para leitura
+    char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto.nArquivo);
-
     dados = fopen(directory, "r");
-
     if (dados == NULL) {
         return ERRO_DE_LEITURA;
     }
 
+    // Posiciona o cursor no deslocamento da tupla desejada
     fseek(dados, from, SEEK_CUR);
-    if(fgetc (dados) == EOF){
+    if(fgetc(dados) == EOF){
         fclose(dados);
         return ERRO_DE_LEITURA;
     }
     
+    // Como o fgetc foi chamado acima e moveu um byte, é preciso retornar esse um byte
     fseek(dados, -1, SEEK_CUR);
-    fread(linha, sizeof(char), tamTpl, dados); //Traz a tupla inteira do arquivo
 
+    // Lê a tupla completa (dados binários) do arquivo
+    fread(linha, sizeof(char), tamTpl, dados); 
     fclose(dados);
     return linha;
 }
-/////
-void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos) { //Coloca uma tupla de tamanho "tam" no buffer e na página "pos"
-  int i = buffer[pos].position;
-  for (; i < buffer[pos].position + tam; i++)
-    buffer[pos].data[i] = *(tupla++);
-}
-//// insere uma tupla no buffer
-int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto){//Define a página que será incluida uma nova tupla
-    int i, found;
-    char *tupla = getTupla(campos, objeto, from);
-    if(tupla == ERRO_DE_LEITURA)  return ERRO_LEITURA_DADOS;
 
+void setTupla(tp_buffer *buffer, char *tupla, int tam, int pos) { //Coloca uma tupla de tamanho "tam" no buffer e na página "pos"
+    int i = buffer[pos].position;
+    for (; i < buffer[pos].position + tam; i++){
+        buffer[pos].data[i] = *(tupla++);
+    }
+}
+
+int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto){// Define a página que será incluida uma nova tupla
+    int i, found;
+
+    // getTupla Retorna um bloco de dados binários
+    char *tupla = getTupla(campos, objeto, from);
+    if(tupla == ERRO_DE_LEITURA){
+        return ERRO_LEITURA_DADOS;
+    }
+
+    // salva em tam o amanho da tupla para adicionar no buffer
     int tam = tamTupla(campos, objeto);
 
-    for(i = found = 0; !found && i < PAGES; i++) {//Procura pagina com espaço para a tupla.
-        if(SIZE - buffer[i].position > tam) {// Se na pagina i do buffer tiver espaço para a tupla, coloca tupla.
+    for(i = found = 0; !found && i < PAGES; i++) { // Procura página no buffer com espaço para a tupla
+        if(SIZE - buffer[i].position > tam) { // Checa se na pagina i do buffer tem espaço para a tupla
             setTupla(buffer, tupla, tam, i);
-            found = 1;
-            buffer[i].position += tam; // Atualiza proxima posição vaga dentro da pagina.
+
+            found = 1; // Encontramos espaço, coloca como 1 para parar o loop
+
+            buffer[i].position += tam; // Atualiza proxima posição vaga dentro da pagina i.
             if(isDeleted(tupla)) {
                 return ERRO_LEITURA_DADOS_DELETADOS;
             }
-             buffer[i].nrec++;
+
+            buffer[i].nrec++; // Adiciona 1 para o número de registros armazenados na página i
         }
     }
     return found ? SUCCESS : ERRO_BUFFER_CHEIO;
@@ -210,24 +222,22 @@ void cria_campo(int tam, int header, char *val, int x) {
    ---------------------------------------------------------------------------------------------*/
 int writeBufferToDisk(tp_buffer *bufferpoll, struct fs_objects *objeto, int blockNumber, int blockOffset) {
     int success = 1; // flag de sucesso porque sucesso deveria valer 1 não 0!
+
+    // Abertura do arquivo de dados
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto->nArquivo);
-
-    FILE *dados = fopen(directory, "r+b");
+    FILE *dados = fopen(directory, "r+b"); // r+b -> "read and write" (binario)
     if (!dados) {
         printf("ERROR: Unable to open file for writing.\n");
         return 0;
     }
-    
-    fseek(dados, blockNumber*SIZE, SEEK_SET);
 
+    fseek(dados, blockNumber*SIZE, SEEK_SET);
     fwrite(bufferpoll->data, blockOffset, 1, dados); //TODO: arrumar o blockOffset
 
     fflush(dados);
-
     fclose(dados);
-
     return success;
 }
 

@@ -285,12 +285,6 @@ struct fs_objects leObjetoById(int idTabela){
     return objeto;
 }
 
-/*
- * Procura a tabela no arquivo de dicionario de dados
- *
- * Retorna um struct fs_objects (types.h) preenchido com os valores da tabela.
- * Em certos casos retorna lixo.
- */
 struct fs_objects leObjeto(char *nomeTabela) {
     FILE *dicionario;
 
@@ -305,7 +299,7 @@ struct fs_objects leObjeto(char *nomeTabela) {
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
 
-    dicionario = fopen(directory, "a+b"); // Abre o dicionario de dados.
+    dicionario = fopen(directory, "a+b"); // Abre o arquivo em "append and read" (binário) o dicionario de dados.
 
     struct fs_objects objeto;
 
@@ -315,7 +309,6 @@ struct fs_objects leObjeto(char *nomeTabela) {
      *
      *   um erro seria mais apropriado.
      */
-
     if(!verificaNomeTabela(nomeTabela)){
         printf("ERROR: relation \"%s\" was not found.\n", nomeTabela);
         if (dicionario)
@@ -329,9 +322,6 @@ struct fs_objects leObjeto(char *nomeTabela) {
         return objeto;
     }
 
-    /*
-     * Enquanto o arquivo não chegar ao final faz a leitura
-     */
     while(fgetc(dicionario) != EOF){
         /*
          * O loop acima usa um fgetc que le 1 byte do dicionario para checar fim de arquivo.
@@ -374,13 +364,7 @@ struct fs_objects leObjeto(char *nomeTabela) {
     return objeto;
 }
 
-/*
- * LEITURA DE DICIONARIO E ESQUEMA
- *
- * Utilizando um fs_objects (possui informacao de uma tabela)
- * é feita a leitura de um tp_table que possui informações sobre o "schema"
- * retorna um tp_table preenchido
- */
+// LEITURA DE DICIONARIO E ESQUEMA
 tp_table *leSchema (struct fs_objects objeto){
     FILE *schema;
     int i = 0, cod = 0;
@@ -531,9 +515,11 @@ int procuraObjectArquivo(char *nomeTabela){
 
     return SUCCESS;
 }
-//
-int tamTupla(tp_table *esquema, struct fs_objects objeto) {// Retorna o tamanho total da tupla da tabela.
 
+/*
+ * Retorna o tamanho total da tupla da tabela.
+ */
+int tamTupla(tp_table *esquema, struct fs_objects objeto) {
     int qtdCampos = objeto.qtdCampos, i, tamanhoGeral = qtdCampos + 1; // tamanho do cabeçalho
 
     if(qtdCampos){ // Lê o primeiro inteiro que representa a quantidade de campos da tabela.
