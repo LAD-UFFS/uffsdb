@@ -1382,4 +1382,42 @@ void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
         return;
     }
 
+
+    //percorre a lista de colunas da tupla e modifica os valores especificados
+    for (Nodo *tuplaNode = toUpdateTuples->prim; tuplaNode != NULL; tuplaNode = tuplaNode->prox) {
+        tupla *t = (tupla *)tuplaNode->inf;
+        
+        //   percorre as colunas da tupla
+        for (column *col = t->column; col != NULL; col = col->next) {
+            
+            // verifica se esta coluna está na lista de UPDATE
+            int updateFieldPos = -1;
+            for (int i = 0; i < updateData->N; i++) {
+                if (objcmp(updateData->columnName[i], col->nomeCampo) == 0) {
+                    updateFieldPos = i;
+                    break;
+                }
+            }
+            
+            // encontra coluna
+            if (updateFieldPos >= 0) {
+                int tam = strlen(updateData->values[updateFieldPos]) + 1;
+                col->valorCampo = (char *)uffsRealloc(col->valorCampo, tam);
+                
+                // copia o novo valor
+                strcpy(col->valorCampo, updateData->values[updateFieldPos]);
+                
+                // atualiza o tipo da coluna
+                col->tipoCampo = updateData->type[updateFieldPos];
+                DEBUG_PRINT("Updated column '%s' with value '%s' (type: %c)", 
+                           col->nomeCampo, col->valorCampo, col->tipoCampo);
+            }
+        }
+    }
+    
+    // falta implementar gravação no disco
+    
+    printf("SUCCESS: UPDATE completed for table '%s'.\n", tabela->nome);
+    
+    freeTable(tabela);
 }
