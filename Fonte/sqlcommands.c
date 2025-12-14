@@ -911,6 +911,28 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
             while (temp != NULL) {
                 if (objcmp(temp->nome, colName) == 0) {
                     // Deu boa achar a coluna, agora converte e escreve.
+                    
+                    column colTemp;
+                    strcpy(colTemp.nomeCampo, colName);
+                    colTemp.next = NULL;
+
+                    if (temp->chave == PK) {
+                        // Verifica se o novo valor já existe na tabela
+                        if (verificaChavePK(tableName, &colTemp, colName, newValStr) == ERRO_CHAVE_PRIMARIA) {
+                            printf("ERROR: duplicate key value violates unique constraint \"%s_pkey\"\n", tableName);
+                            return;
+                        }
+                    }
+
+                    if (temp->chave == FK) {
+                        // Verifica se o valor referenciado existe na tabela apontada
+                        if (verificaChaveFK(tableName, &colTemp, colName, newValStr, temp->tabelaApt, temp->attApt) == ERRO_CHAVE_ESTRANGEIRA) {
+                            printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", temp->tabelaApt, temp->attApt, newValStr);
+                            return;
+                        }
+                    }
+
+
                     nullFlags[colIndex] = 0;
                     void *valToWrite = NULL;
 
@@ -949,6 +971,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
         // so grava se estiver sujo
         if (bufferpool[p].db){ 
+            printf("ta escrevendo");
             int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
