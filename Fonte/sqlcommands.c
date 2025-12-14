@@ -1312,15 +1312,6 @@ void createIndex(rc_insert *t) {
 
 ///////
 
-
-
-/* ----------------------------------------------------------------------------------------------
-    Objetivo:   Atualiza tuplas de uma tabela modificando diretamente os dados no buffer.
-    Parametros: Lista de tuplas a serem atualizadas (toUpdateTuples),
-                Nome da tabela (tabelaName),
-                Dados do UPDATE contendo colunas e valores (updateData).
-    Retorno:    Void.
-   ---------------------------------------------------------------------------------------------*/
 void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
     struct fs_objects objeto;
     tp_table *esquema;
@@ -1333,7 +1324,7 @@ void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
     esquema = tabela->esquema;
 
     DEBUG_PRINT("UPDATE - TableName <--------- %s", tabela->nome);
-
+    
     // Verifica se todas as colunas especificadas no UPDATE existem na tabela
     if (!allColumnsExists(updateData, tabela)) {
         freeTable(tabela);
@@ -1382,42 +1373,101 @@ void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
         return;
     }
 
+    // Inicializa o buffer pool para carregar as páginas da tabela
+    tp_buffer *bufferpoll = initbuffer();
+    if (bufferpoll == ERRO_DE_ALOCACAO) {
+        printf("ERROR: no memory available to allocate buffer.\n");
+        freeTable(tabela);
+        return;
+    }
 
-    //percorre a lista de colunas da tupla e modifica os valores especificados
+    // Carrega todas as páginas da tabela no buffer
+    int tuplaCount = 0, erro;
+    do {
+        erro = colocaTuplaBuffer(bufferpoll, tuplaCount, tabela->esquema, objeto);
+        tuplaCount++;
+    } while(erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
+    tuplaCount--; // ajusta para o número correto de páginas lidas
+
+    int countUpdatedTuples = 0;
+
+    // Percorre a lista de tuplas que precisam ser atualizadas
     for (Nodo *tuplaNode = toUpdateTuples->prim; tuplaNode != NULL; tuplaNode = tuplaNode->prox) {
         tupla *t = (tupla *)tuplaNode->inf;
+        int page = t->bufferPage;
+        int offset = t->offset;
         
-        //   percorre as colunas da tupla
-        for (column *col = t->column; col != NULL; col = col->next) {
-            
-            // verifica se esta coluna está na lista de UPDATE
+        // Ponteiro para a região de dados da tupla no buffer
+        char *tupleData = bufferpoll[page].data + offset;
+        
+        // Calcula o offset dentro da tupla para cada campo do esquema
+        int fieldOffset = 1; // +1 por causa do byte de controle de deleção
+
+        
+        for (int i = 0; i < updateData->N; i++) {        
+            int size = 0;
+
+            // Verifica se este campo está na lista de UPDATE
             int updateFieldPos = -1;
-            for (int i = 0; i < updateData->N; i++) {
-                if (objcmp(updateData->columnName[i], col->nomeCampo) == 0) {
+            tp_table *schemaField = tabela->esquema;
+            for (; schemaField != NULL; schemaField = schemaField->next) {
+                size = schemaField->tam;                
+                if (objcmp(updateData->columnName[i], schemaField->nome) == 0) {
                     updateFieldPos = i;
                     break;
                 }
+                fieldOffset += size;
             }
             
-            // encontra coluna
+            // Se este campo precisa ser atualizado, modifica diretamente no buffer
             if (updateFieldPos >= 0) {
-                int tam = strlen(updateData->values[updateFieldPos]) + 1;
-                col->valorCampo = (char *)uffsRealloc(col->valorCampo, tam);
+                char *fieldData = tupleData + fieldOffset + t->ncols;
+
+                // Atualiza o valor baseado no tipo
+                if (schemaField->tipo == 'I') {
+                    int valorInteiro = atoi(updateData->values[updateFieldPos]);
+                    memcpy(fieldData, &valorInteiro, size);
+                    DEBUG_PRINT("UPDATE - Integer field '%s' updated to %d", schemaField->nome, valorInteiro);
+                    
+                } else if (schemaField->tipo == 'D') {
+                    double valorDouble = atof(updateData->values[updateFieldPos]);
+                    memcpy(fieldData, &valorDouble, size);
+                    DEBUG_PRINT("UPDATE - Double field '%s' updated to %f", schemaField->nome, valorDouble);
+                    
+                } else if (schemaField->tipo == 'C') {
+                    char valorChar = updateData->values[updateFieldPos][0];
+                    memcpy(fieldData, &valorChar, size);
+                    DEBUG_PRINT("UPDATE - Char field '%s' updated to '%c'", schemaField->nome, valorChar);
+                    
+                } else if (schemaField->tipo == 'S') {
+                    // String: preenche com o novo valor e completa com zeros
+                    memset(fieldData, 0, schemaField->tam); // limpa a área
+                    strncpy(fieldData, updateData->values[updateFieldPos], schemaField->tam);
+                    fieldData[schemaField->tam - 1] = '\0'; // garante terminação
+                    DEBUG_PRINT("UPDATE - String field '%s' updated to '%s'", schemaField->nome, updateData->values[updateFieldPos]);
+                }
                 
-                // copia o novo valor
-                strcpy(col->valorCampo, updateData->values[updateFieldPos]);
-                
-                // atualiza o tipo da coluna
-                col->tipoCampo = updateData->type[updateFieldPos];
-                DEBUG_PRINT("Updated column '%s' with value '%s' (type: %c)", 
-                           col->nomeCampo, col->valorCampo, col->tipoCampo);
+                // Marca a página como modificada (dirty)
+                bufferpoll[page].db = 1;
+            }
+        }
+        
+        countUpdatedTuples++;
+    }
+
+    // Persiste todas as páginas modificadas no disco
+    for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
+        if (bufferpoll[p].db) { // só grava páginas modificadas
+            int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll[p].nrec * tamTupla(tabela->esquema, objeto));
+            if (!result) {
+                fprintf(stderr, "ERROR: failed to persist changes to disk\n");
+                freeTable(tabela);
+                return;
             }
         }
     }
-    
-    // falta implementar gravação no disco
-    
-    printf("SUCCESS: UPDATE completed for table '%s'.\n", tabela->nome);
+
+    printf("UPDATE %d\n", countUpdatedTuples);
     
     freeTable(tabela);
 }
