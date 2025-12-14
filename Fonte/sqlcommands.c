@@ -858,9 +858,9 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     tp_buffer *bufferpool;
 
     table *tabela = (table*)uffslloc(sizeof(table));
-    // Chama o leObjeto e leSchema
-    abreTabela(tableName, &objeto, tabela->esquema);
 
+    // abreTabela Chama o leObjeto e leSchema
+    abreTabela(tableName, &objeto, &tabela->esquema);
     esquema = tabela->esquema;
 
     if (!allColumnsExists(updateData, tabela)) {
@@ -870,20 +870,21 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
 
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
-
     if (bufferpool == ERRO_DE_ALOCACAO) {
-        printf("ERROR: memória insuficiente para alocar o buffer.\n");
+        printf("ERROR: insufficient memory to allocate buffer.\n");
         return;
     }
 
 	// preenche o buffer com as tuplas com base na tabela e campos
     int pageCount = 0, erro;
     do {
+        if(pageCount >= PAGES) break; 
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
         pageCount++;
     } while(erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
 
     int countUpdated = 0;
+
     for (Nodo *no = tuplesToUpdate->prim; no != NULL; no = no->prox) {
         tupla *t = (tupla*)no->inf;
 
@@ -898,6 +899,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
         // Ponteiro para o início dos dados
         char *dataPtr = tuplePtr + 1 + objeto.qtdCampos;
 
+        // Itera sobre as colunas que vieram no comando UPDATE
         for (int i = 0; i < updateData->N; i++) { 
             char *colName   = updateData->columnName[i];
             char *newValStr = updateData->values[i];
@@ -910,11 +912,15 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
             // Busca dos campos necessários no "esquema"
             while (temp != NULL) {
                 if (objcmp(temp->nome, colName) == 0) {
-                    // Deu boa achar a coluna, agora converte e escreve.
-                    
                     column colTemp;
                     strcpy(colTemp.nomeCampo, colName);
                     colTemp.next = NULL;
+
+                    // Checa para igualdade de tipo do novo valor
+                    if (!typesCompatible(temp->tipo, updateData->type[i])) {
+                        printf("ERROR: invalid value for column \"%s\".\n", updateData->columnName[i]);
+                        return;
+                    }
 
                     if (temp->chave == PK) {
                         // Verifica se o novo valor já existe na tabela
@@ -931,7 +937,6 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                             return;
                         }
                     }
-
 
                     nullFlags[colIndex] = 0;
                     void *valToWrite = NULL;
@@ -971,7 +976,6 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
         // so grava se estiver sujo
         if (bufferpool[p].db){ 
-            printf("ta escrevendo");
             int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");

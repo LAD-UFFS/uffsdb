@@ -346,8 +346,8 @@ int interface() {
                             GLOBAL_DATA.N = GLOBAL_PARSER.val_count;
                             resultado = handleTableOperation(&QUERY, 'u');
                             if (resultado && afterTrigger(resultado, &QUERY)) {
-                               op_update(resultado, &GLOBAL_DATA, QUERY.tabela);
-                               resultado = NULL;
+                                op_update(resultado, &GLOBAL_DATA, QUERY.tabela);
+                                resultado = NULL;
                             }
                             break;
                         case OP_CREATE_TABLE:

@@ -152,8 +152,9 @@ int verifyFK(char *, char *);
 
 
 
-/* OBjetivo: Atualizar os valores das tuplas com base nos dados.
-  Parâmetros: Listac com as tuplas a serem atualizadas, dados do update, nome da tabela.
+/*
+  OBjetivo: Atualizar os valores das tuplas com base nos dados.
+  Parâmetros: Lista com as tuplas a serem atualizadas, dados do update, nome da tabela.
   Retorno: void
 */
 
