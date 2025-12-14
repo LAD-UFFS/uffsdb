@@ -976,7 +976,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
         // so grava se estiver sujo
         if (bufferpool[p].db){ 
-            int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
+            int result = writeBufferToDisk(&bufferpool[p], &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
             }
