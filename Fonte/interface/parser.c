@@ -191,7 +191,6 @@ void setColumnFKColumnCreate(char **nome) {
     GLOBAL_PARSER.step++;
 }
 
-// TODO: implementar isso aqui
 //Coluna que será aualizada
 void setColumnUpdate(char **nome){
 
@@ -344,6 +343,7 @@ int interface() {
                             }
                             break;
                         case OP_UPDATE:
+                            GLOBAL_DATA.N = GLOBAL_PARSER.val_count;
                             resultado = handleTableOperation(&QUERY, 'u');
                             if (resultado && afterTrigger(resultado, &QUERY)) {
                                op_update(resultado, &GLOBAL_DATA, QUERY.tabela);

@@ -116,7 +116,6 @@ void setColumnBtreeCreate(char **nome);
  */
 void setColumnFKTableCreate(char **nome);
 
-/* TODO */
 void setColumnUpdate(char **nome);
 void setValueUpdate(char *nome, char type);
 
