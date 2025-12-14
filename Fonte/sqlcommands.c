@@ -837,7 +837,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
     }
 
     for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
-        int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll->nrec*tamTupla(esquema, objeto));
+        int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll.nrec*tamTupla(esquema, objeto));
         if (!result) {
             fprintf(stderr, "ERROR: failed to persist changes to disk\n");
 
@@ -868,6 +868,30 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
         return;
     }
 
+    int found = 0;
+    for (int i = 0; i < updateData->N; i++) { 
+            char *colName  = updateData->columnName[i];
+            tp_table *temp = esquema;
+
+            while (temp != NULL) {
+                if (objcmp(temp->nome, colName) == 0) {
+                    found = 1;
+                    // Checa se os tipos entre os dados passados e da tabela batem
+                    if (!typesCompatible(temp->tipo, updateData->type[i])) {
+                        printf("ERROR: invalid value for column \"%s\".\n", updateData->columnName[i]);
+                        return;
+                    }
+                    break;
+                }
+                temp = temp->next;
+            }
+    }
+
+    if(!found){
+        printf("ERROR: column doesn't exist in table '%s'.\n", tableName);
+        return;
+    }
+
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
     if (bufferpool == ERRO_DE_ALOCACAO) {
@@ -881,7 +905,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
         if(pageCount >= PAGES) break; 
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
         pageCount++;
-    } while(erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
+    } while (erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
 
     int countUpdated = 0;
 
@@ -915,13 +939,6 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                     column colTemp;
                     strcpy(colTemp.nomeCampo, colName);
                     colTemp.next = NULL;
-
-                    // Checa para igualdade de tipo do novo valor
-                    if (!typesCompatible(temp->tipo, updateData->type[i])) {
-                        printf("ERROR: invalid value for column \"%s\".\n", updateData->columnName[i]);
-                        return;
-                    }
-
                     if (temp->chave == PK) {
                         // Verifica se o novo valor já existe na tabela
                         if (verificaChavePK(tableName, &colTemp, colName, newValStr) == ERRO_CHAVE_PRIMARIA) {
@@ -941,15 +958,19 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
                     nullFlags[colIndex] = 0;
                     void *valToWrite = NULL;
 
+                    int intVal;
+                    double doubleVal;
+                    char charVal;
+
                     // Conversão de tipos 
                     if (temp->tipo == 'I') {
-                        int intVal = atoi(newValStr);
+                        intVal = atoi(newValStr);
                         valToWrite = &intVal;
                     } else if (temp->tipo == 'D') {
-                        double doubleVal = atof(newValStr);
+                        doubleVal = atof(newValStr);
                         valToWrite = &doubleVal;
                     } else if (temp->tipo == 'C') {
-                        char charVal = newValStr[0];
+                        charVal = newValStr[0];
                         valToWrite = &charVal;
                     } else if (temp->tipo == 'S') {
                         // Para varchar, copiamos direto a string
@@ -976,7 +997,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
         // so grava se estiver sujo
         if (bufferpool[p].db){ 
-            int result = writeBufferToDisk(&bufferpool[p], &objeto, p, bufferpool[p].nrec * tamTupla(esquema, objeto));
+            int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll.nrec*tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
             }
@@ -1059,6 +1080,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     if(!validaColsWhere(query->tok, esquema, objeto.qtdCampos)){
         return NULL;
     }
+
     int k;
     char abortar = 0;
     Lista *resultado = novaLista(NULL);

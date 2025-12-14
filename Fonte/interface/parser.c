@@ -266,9 +266,8 @@ void clearGlobalStructs() {
     GLOBAL_DATA.fkTable = NULL;
     GLOBAL_DATA.fkColumn = NULL;
 
-    GLOBAL_DATA.type = (char *)uffslloc(sizeof(char));
-
-    GLOBAL_DATA.attribute = (int *)uffslloc(sizeof(int));
+    GLOBAL_DATA.type = NULL;
+    GLOBAL_DATA.attribute = NULL;
 
     yylex_destroy();
 
@@ -378,6 +377,7 @@ int interface() {
                 case OP_CREATE_TABLE:
                 case OP_DROP_TABLE:
                 case OP_SELECT:
+                case OP_UPDATE:
                 case OP_INSERT:
                 case OP_CREATE_INDEX:
                     if (GLOBAL_PARSER.step == 1) {
@@ -385,7 +385,6 @@ int interface() {
                         printf("Expected object name.\n");
                     }
                 break;
-
                 default: break;
             }
 
@@ -405,7 +404,7 @@ int interface() {
                     }else{
                         printf("Expected token \"VALUES\" after object name.\n");
                     }
-                    
+
                     GLOBAL_PARSER.consoleFlag = 0;
                 }
             }
