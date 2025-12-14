@@ -848,26 +848,35 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 }
 
 void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
-    if (!tuplesToUpdate || !tuplesToUpdate->tam) return 0;
+    if (!tuplesToUpdate || !tuplesToUpdate->tam) return;
 
+    // Lista de tp_tables que serão preenchidas com informações dos campos da tabela "objeto"
     tp_table *esquema;
+    // fs_objects com informações da tabela
     struct fs_objects objeto;
     //Lista de buffers para as tuplas com tamanho da constante PAGES
     tp_buffer *bufferpool;
 
-    // fs_objects com informações da tabela
-    objeto  = leObjeto(tableName);
-    // Lista de tp_tables preenchidas com informações dos campos da tabela "objeto"
-    esquema = leSchema(objeto);
+    table *tabela = (table*)uffslloc(sizeof(table));
+    // Chama o leObjeto e leSchema
+    abreTabela(tableName, &objeto, tabela->esquema);
+
+    esquema = tabela->esquema;
+
+    if (!allColumnsExists(updateData, tabela)) {
+        printf("ERROR: one or more columns to be updated do not exist in table '%s'.\n", tableName);
+        return;
+    }
+
     // Inicializa o buffer com o uffsloc (retorna ERRO DE ALOCACAO ou buffer pool)
     bufferpool = initbuffer();
 
     if (bufferpool == ERRO_DE_ALOCACAO) {
         printf("ERROR: memória insuficiente para alocar o buffer.\n");
-        return 0;
+        return;
     }
 
-	// preenchimento do buffer com base na tabela e campos
+	// preenche o buffer com as tuplas com base na tabela e campos
     int pageCount = 0, erro;
     do {
         erro = colocaTuplaBuffer(bufferpool, pageCount, esquema, objeto);
@@ -1054,7 +1063,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
 
     }
     if(abortar) resultado = NULL;
-    return;
+    return resultado;
 }
 
 /* ----------------------------------------------------------------------------------------------
