@@ -837,7 +837,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
     }
 
     for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
-        int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll.nrec*tamTupla(esquema, objeto));
+        int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll->nrec*tamTupla(esquema, objeto));
         if (!result) {
             fprintf(stderr, "ERROR: failed to persist changes to disk\n");
 
@@ -997,7 +997,7 @@ void op_update(Lista *tuplesToUpdate, rc_insert *updateData, char *tableName) {
     for (int p = 0; p < PAGES && bufferpool[p].nrec; p++) {
         // so grava se estiver sujo
         if (bufferpool[p].db){ 
-            int result = writeBufferToDisk(bufferpoll, &objeto, p, bufferpoll.nrec*tamTupla(esquema, objeto));
+            int result = writeBufferToDisk(bufferpool, &objeto, p, bufferpool->nrec*tamTupla(esquema, objeto));
             if (!result) {
                 printf("ERROR: failed to persist changes to disk\n");
             }
