@@ -237,7 +237,7 @@ delete: DELETE FROM {setMode(OP_DELETE); resetQuery();} table_query where semico
 
 update_assignments: update_assignment | update_assignment ',' update_assignments;
 
-update_assignment: OBJECT {setColumnUpdate(yytext);} '=' update_value;
+update_assignment: OBJECT {setColumnUpdate(&yylval.strval);} '=' update_value;
 
 update_value: VALUE  {setValueUpdate(yylval.strval, 'D');}
             | NUMBER {setValueUpdate(yylval.strval, 'I');}
