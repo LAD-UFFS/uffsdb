@@ -402,6 +402,13 @@ int interface() {
                         case OP_CREATE_INDEX:
                             createIndex(&GLOBAL_DATA);
                             break;
+                        case OP_UPDATE:
+                            resultado = handleTableOperation(&QUERY, 'd');
+                            if (resultado) {
+                                op_update(resultado, &UPDATE_DATA);
+                                resultado = NULL;
+                            }
+                            break;
                         default: break;
                     }
 
