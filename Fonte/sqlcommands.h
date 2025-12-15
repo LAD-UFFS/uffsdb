@@ -48,7 +48,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName);
     Retorno:    int 1 (Sucesso) ou 0 (Erro).
    ---------------------------------------------------------------------------------------------*/
 int validate_update(inf_update *updateData, tp_table *esquema, struct fs_objects objeto);
-  
+
 /* ----------------------------------------------------------------------------------------------
   Objetivo: Atualiza o índice B+ de uma coluna, se existir.
   Parâmetros: coluna (esquema), tableName (nome da tabela), newValue (novo valor no índice), offset (offset da tupla no arquivo).

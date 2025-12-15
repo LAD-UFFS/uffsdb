@@ -211,24 +211,29 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
     char str[20];
     char dat[5] = ".dat";
     struct fs_objects objeto;
-    tp_table *tabela;
-    tp_buffer *bufferpoll;
+    tp_table *tabela = NULL;
+    tp_buffer *bufferpoll = NULL;
     tupla *pagina = NULL;
 
     strcpylower(str, tabelaApt);
     strcat(str, dat);              //Concatena e junta o nome com .dat
 
-    erro = existeAtributo(nomeTabela, c);
-
-    if(iniciaAtributos(&objeto, &tabela, &bufferpoll, tabelaApt) != SUCCESS) {
+    // Primeiro inicializa os atributos antes de qualquer verificação que dependa deles
+    if (iniciaAtributos(&objeto, &tabela, &bufferpoll, tabelaApt) != SUCCESS) {
+        if (bufferpoll) uffsFree(TEMPORARY);
+        if (tabela) free(tabela);
         return ERRO_DE_PARAMETRO;
     }
+
+    // Verifica se o atributo existe na tabela de origem de forma segura após inicialização
+    erro = existeAtributo(nomeTabela, c);
 
     erro = SUCCESS;
     for(x = 0; erro == SUCCESS; x++)
         erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
 
     for (page = 0; page < PAGES; page++) {
+        if (pagina) free(pagina);
         pagina = getPage(bufferpoll, tabela, objeto, page);
         if (!pagina) break;
         /*
@@ -244,12 +249,18 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
 
                         if(c->tipoCampo == 'S'){
                             if(objcmp(c->valorCampo, valorCampo) == 0){
+                                if (pagina) free(pagina);
+                                if (bufferpoll) uffsFree(TEMPORARY);
+                                if (tabela) free(tabela);
                                 return SUCCESS;
                             }
                         }
                         else if(c->tipoCampo == 'I'){
                             int *n = (int *)&c->valorCampo[0];
                             if(*n == atoi(valorCampo)){
+                                if (pagina) free(pagina);
+                                if (bufferpoll) uffsFree(TEMPORARY);
+                                if (tabela) free(tabela);
                                 return SUCCESS;
                             }
                         }
@@ -257,21 +268,33 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
                             double *nn = (double *)&c->valorCampo[0];
 
                             if(*nn == atof(valorCampo)){
+                                if (pagina) free(pagina);
+                                if (bufferpoll) uffsFree(TEMPORARY);
+                                if (tabela) free(tabela);
                                 return SUCCESS;
                             }
                         }
                         else if(c->tipoCampo == 'C'){
                             if(c->valorCampo == valorCampo){
+                                if (pagina) free(pagina);
+                                if (bufferpoll) free(bufferpoll);
+                                if (tabela) free(tabela);
                                 return SUCCESS;
                             }
                         }
                         else {
+                            if (pagina) free(pagina);
+                            if (bufferpoll) uffsFree(TEMPORARY);
+                            if (tabela) free(tabela);
                             return ERRO_CHAVE_ESTRANGEIRA;
                         }
                     }
                 }
         }
     }
+    if (pagina) free(pagina);
+    if (bufferpoll) uffsFree(TEMPORARY);
+    if (tabela) free(tabela);
     return ERRO_CHAVE_ESTRANGEIRA;
 }
 /* ----------------------------------------------------------------------------------------------
@@ -938,7 +961,7 @@ int validate_update(inf_update *updateData, tp_table *esquema, struct fs_objects
   ----------------------------------------------------------------------------------------------*/
 void updateIndex(tp_table *coluna, char *tableName, char *newValue, int offset) {
     // Constrói o nome do arquivo de índice
-    char *nomeIndice = (char *)malloc(sizeof(char) * 
+    char *nomeIndice = (char *)uffsRealloc(NULL, sizeof(char) * 
         (strlen(connected.db_directory) + strlen(tableName) + strlen(coluna->nome) + 1));
     strcpy(nomeIndice, connected.db_directory);
     strcat(nomeIndice, tableName);
@@ -951,7 +974,7 @@ void updateIndex(tp_table *coluna, char *tableName, char *newValue, int offset) 
         // Insere a nova chave no índice apontando para o mesmo offset
         insere_indice(raiz, newValue, nomeIndice, offset);
     }
-    free(nomeIndice);
+    /* nomeIndice lives in TEMPORARY context; released via uffsFree(TEMPORARY) */
 }
 
 /* ----------------------------------------------------------------------------------------------
@@ -968,7 +991,6 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
 
     // Valida os dados de atualização antes de prosseguir
     if (!validate_update(updateData, esquema, objeto)) {
-        free(esquema);
         return;
     }
 
@@ -978,7 +1000,6 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
 
     if(bufferpoll == ERRO_DE_ALOCACAO){
         printf("ERROR: no memory available to allocate buffer.\n");
-        free(esquema);
         return;
     }
 
@@ -989,7 +1010,6 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
         tuplaCount++;
     } while(erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS);
     tuplaCount--; 
-
 
     //Atualização das tuplas
     for (Nodo *temp = toUpdateTuples->prim; temp; temp = temp->prox) {
@@ -1029,14 +1049,14 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
                         // Limpa o espaço da coluna antes de copiar o novo valor
                         memset(fieldPtr, '\0', esquema[i].tam);
                         strncpy(fieldPtr, updateData->values[j], esquema[i].tam);
-                    } else if(esquema[i].tipo == 'I') {
 
+                    } else if(esquema[i].tipo == 'I') {
+                        
                         // Converte ASCII -> Int e copia os bytes
                         int val = atoi(updateData->values[j]); 
                         memcpy(fieldPtr, &val, sizeof(int));
-                        
                     } else if(esquema[i].tipo == 'D') {
-
+                        
                         // Converte ASCII -> Double e copia os bytes
                         double val = atof(updateData->values[j]);
                         memcpy(fieldPtr, &val, sizeof(double));
@@ -1052,15 +1072,12 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
         countUpdatedTuples++;
     }
 
-
     // Grava as páginas modificadas de volta ao disco, usando o tamanho efetivo da página
     for (int p = 0; p < PAGES && bufferpoll[p].nrec; p++) {
         if(bufferpoll[p].db) { 
              int result = writeBufferToDisk(&bufferpoll[p], &objeto, p, bufferpoll[p].position);
              if (!result) {
                  fprintf(stderr, "ERROR: failed to persist changes to disk\n");
-                 free(bufferpoll);
-                 free(esquema);
                  return;
              }
         }
@@ -1068,8 +1085,6 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
 
     printf("UPDATED %d %s\n", countUpdatedTuples, (countUpdatedTuples != 1) ? "rows" : "row");
 
-    free(bufferpoll);
-    free(esquema);
 }
 
 int afterTrigger(Lista *resultado, inf_query *query) {
