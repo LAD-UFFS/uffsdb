@@ -38,6 +38,11 @@ rc_insert GLOBAL_DATA;
 */
 inf_query QUERY;
 
+/*
+  Informações da operação update.
+*/
+inf_update UPDATE_DATA;
+
 /* Estrutura auxiliar do reconhecedor.
  */
 rc_parser GLOBAL_PARSER;

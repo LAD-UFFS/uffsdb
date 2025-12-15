@@ -50,18 +50,17 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName);
 int validate_update(inf_update *updateData, tp_table *esquema, struct fs_objects objeto);
   
 /* ----------------------------------------------------------------------------------------------
-    Objetivo:   Utilizada para atualizar tuplas.
-    Parametros: Lista de tuplas a atualizar, estrutura com dados do update.
-    Retorno:    void.
-   ---------------------------------------------------------------------------------------------*/
-
-/* ----------------------------------------------------------------------------------------------
   Objetivo: Atualiza o índice B+ de uma coluna, se existir.
   Parâmetros: coluna (esquema), tableName (nome da tabela), newValue (novo valor no índice), offset (offset da tupla no arquivo).
   Retorno: void.
   ----------------------------------------------------------------------------------------------*/
 void updateIndex(tp_table *coluna, char *tableName, char *newValue, int offset);
 
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Utilizada para atualizar tuplas.
+    Parametros: Lista de tuplas a atualizar, estrutura com dados do update.
+    Retorno:    void.
+   ---------------------------------------------------------------------------------------------*/
 void op_update(Lista *toUpdateTuples, inf_update *updateData);
   
 int afterTrigger(Lista *resultado, inf_query *query);

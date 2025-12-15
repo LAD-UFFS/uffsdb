@@ -954,6 +954,13 @@ void updateIndex(tp_table *coluna, char *tableName, char *newValue, int offset) 
     free(nomeIndice);
 }
 
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Executa a operação de UPDATE em uma lista de tuplas.
+    Parametros: 
+        - toUpdateTuples: Lista encadeada contendo as referências (Página/Offset) das tuplas a serem alteradas.
+        - updateData: Estrutura contendo os novos valores e colunas a serem atualizadas.
+    Retorno:    void.
+   ---------------------------------------------------------------------------------------------*/
 void op_update(Lista *toUpdateTuples, inf_update *updateData) {
     tp_table *esquema;
     struct fs_objects objeto = leObjeto(updateData->tabela);
