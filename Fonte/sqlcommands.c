@@ -959,6 +959,12 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
     struct fs_objects objeto = leObjeto(updateData->tabela);
     esquema = leSchema(objeto); 
 
+    // Valida os dados de atualização antes de prosseguir
+    if (!validate_update(updateData, esquema, objeto)) {
+        free(esquema);
+        return;
+    }
+
     // Inicializa o buffer para manipulação das páginas em memória
     tp_buffer *bufferpoll = initbuffer();
     int countUpdatedTuples = 0;
@@ -997,13 +1003,25 @@ void op_update(Lista *toUpdateTuples, inf_update *updateData) {
             for(int j = 0; j < updateData->count; j++) {
                 if(strcmp(esquema[i].nome, updateData->colunas[j]) == 0) {
 
+                    // Se a coluna tiver um índice criado (BT), atualiza o índice B+ com o novo valor
+                    if (esquema[i].chave == BT) {
+                        updateIndex(&esquema[i], updateData->tabela, updateData->values[j], t->offset);
+                    }
+
                     // Atualiza o valor da coluna na tupla em memória
                     char *fieldPtr = dataBase + payloadOffset;
 
                     if(esquema[i].tipo == 'S' || esquema[i].tipo == 'C') {
 
-                        strncpy(fieldPtr, updateData->values[j], esquema[i].tam);
+                        // Validação de tamanho para Strings
+                        if (strlen(updateData->values[j]) > esquema[i].tam) {
+                            printf("WARNING: Value for column '%s' truncated (Size: %d, Max: %d).\n", 
+                            esquema[i].nome, (int)strlen(updateData->values[j]), esquema[i].tam);
+                        }
 
+                        // Limpa o espaço da coluna antes de copiar o novo valor
+                        memset(fieldPtr, '\0', esquema[i].tam);
+                        strncpy(fieldPtr, updateData->values[j], esquema[i].tam);
                     } else if(esquema[i].tipo == 'I') {
 
                         // Converte ASCII -> Int e copia os bytes
