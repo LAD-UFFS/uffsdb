@@ -1315,8 +1315,7 @@ void createIndex(rc_insert *t) {
 int op_update(rc_insert *data, inf_query *query) {
     tp_table *esquema;
     struct fs_objects obj;
-    tp_buffer *buffer;
-    int i, erro;
+    int i;
 
     // validar se tabea existe
     if (!verificaNomeTabela(data->objName)) {
@@ -1347,20 +1346,6 @@ int op_update(rc_insert *data, inf_query *query) {
             return ERRO_NOME_CAMPO;
         }
     }
-
-    buffer = initbuffer();
-    if(buffer == ERRO_DE_ALOCACAO) {
-        printf("ERROR: cannot allocate memory for buffer.");
-        return ERRO_VAZIO;
-    }
-
-    // carregar todas as tuplas na memória
-    int pageCount = 0;
-    do {
-        erro = colocaTuplaBuffer(buffer, pageCount, esquema, data->objName);
-        pageCount++;
-    } while (erro == SUCCESS);
-    pageCount--;
 
     return SUCCESS;
 }
