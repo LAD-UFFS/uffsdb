@@ -206,35 +206,32 @@ int iniciaAtributos(struct fs_objects *objeto, tp_table **tabela, tp_buffer **bu
                 ERRO_CHAVE_ESTRANGEIRA
    ---------------------------------------------------------------------------------------------*/
 
-int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCampo, char *tabelaApt, char *attApt){
-    int x, erro, page;
-    char str[20];
-    char dat[5] = ".dat";
-    struct fs_objects objeto;
-    tp_table *tabela;
-    tp_buffer *bufferpoll;
-    tupla *pagina = NULL;
+int verificaChaveFK(char *nomeTabela, column *c, char *nomeCampo, char *valorCampo, char *tabelaApt, char *attApt, tp_buffer *bufferpoll, struct fs_objects objeto, tp_table *tabela) {
+    if (bufferpoll == NULL) {
+        int x, erro;
 
-    strcpylower(str, tabelaApt);
-    strcat(str, dat);              //Concatena e junta o nome com .dat
+        erro = existeAtributo(nomeTabela, c);
+        if (erro != SUCCESS ) {
+            return ERRO_DE_PARAMETRO;
+        }
 
-    erro = existeAtributo(nomeTabela, c);
+        if (iniciaAtributos(&objeto, &tabela, &bufferpoll, nomeTabela) != SUCCESS) {
+            return ERRO_DE_PARAMETRO;
+        }
 
-    if(iniciaAtributos(&objeto, &tabela, &bufferpoll, tabelaApt) != SUCCESS) {
-        return ERRO_DE_PARAMETRO;
+        erro = SUCCESS;
+        for(x = 0; erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS; x++) {
+            erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
+        }
     }
 
-    erro = SUCCESS;
-    for(x = 0; erro == SUCCESS; x++)
-        erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
-
-    for (page = 0; page < PAGES; page++) {
+    tupla *pagina = NULL;
+    for (int page = 0; page < PAGES; page++) {
         pagina = getPage(bufferpoll, tabela, objeto, page);
         if (!pagina) break;
         /*
         * Pq ele percorre todas as tuplas para verificar ??????
-        * o campo vai mudar de nome no select ??? ?
-        * alguém deveria arrumar isso...
+        * o campo vai mudar de nome no select ??? alguém deveria arrumar isso...
         */
         for(int j = 0; j < bufferpoll[page].nrec; j++){
             for (int i = 0; i < objeto.qtdCampos; i++)
@@ -399,8 +396,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
                 raizfk = constroi_bplus(arquivoIndice); //verifica se o atributo referenciado pela FK possui indice B+
                 if(raizfk == NULL) { //se não encontra faz a verificação sem indice b+
         			if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
-        				erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo,
-                        tab2[j].tabelaApt, tab2[j].attApt);
+        				erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo, tab2[j].tabelaApt, tab2[j].attApt, NULL, objeto, tab2);
                         if (erro != SUCCESS){
                             printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
                             return ERRO_CHAVE_ESTRANGEIRA;
