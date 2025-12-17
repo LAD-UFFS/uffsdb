@@ -206,32 +206,35 @@ int iniciaAtributos(struct fs_objects *objeto, tp_table **tabela, tp_buffer **bu
                 ERRO_CHAVE_ESTRANGEIRA
    ---------------------------------------------------------------------------------------------*/
 
-int verificaChaveFK(char *nomeTabela, column *c, char *nomeCampo, char *valorCampo, char *tabelaApt, char *attApt, tp_buffer *bufferpoll, struct fs_objects objeto, tp_table *tabela) {
-    if (bufferpoll == NULL) {
-        int x, erro;
+int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCampo, char *tabelaApt, char *attApt){
+    int x, erro, page;
+    char str[20];
+    char dat[5] = ".dat";
+    struct fs_objects objeto;
+    tp_table *tabela;
+    tp_buffer *bufferpoll;
+    tupla *pagina = NULL;
 
-        erro = existeAtributo(nomeTabela, c);
-        if (erro != SUCCESS ) {
-            return ERRO_DE_PARAMETRO;
-        }
+    strcpylower(str, tabelaApt);
+    strcat(str, dat);              //Concatena e junta o nome com .dat
 
-        if (iniciaAtributos(&objeto, &tabela, &bufferpoll, nomeTabela) != SUCCESS) {
-            return ERRO_DE_PARAMETRO;
-        }
+    erro = existeAtributo(nomeTabela, c);
 
-        erro = SUCCESS;
-        for(x = 0; erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS; x++) {
-            erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
-        }
+    if(iniciaAtributos(&objeto, &tabela, &bufferpoll, tabelaApt) != SUCCESS) {
+        return ERRO_DE_PARAMETRO;
     }
 
-    tupla *pagina = NULL;
-    for (int page = 0; page < PAGES; page++) {
+    erro = SUCCESS;
+    for(x = 0; erro == SUCCESS; x++)
+        erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
+
+    for (page = 0; page < PAGES; page++) {
         pagina = getPage(bufferpoll, tabela, objeto, page);
         if (!pagina) break;
         /*
         * Pq ele percorre todas as tuplas para verificar ??????
-        * o campo vai mudar de nome no select ??? alguém deveria arrumar isso...
+        * o campo vai mudar de nome no select ??? ?
+        * alguém deveria arrumar isso...
         */
         for(int j = 0; j < bufferpoll[page].nrec; j++){
             for (int i = 0; i < objeto.qtdCampos; i++)
@@ -325,7 +328,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     int i = 0, x = 0, t, erro, encontrou, j = 0, flag=0;
     FILE *dados;
     nodo *raiz = NULL;
-    nodo *raizfk = NULL;
+    // nodo *raizfk = NULL;
 
     struct fs_objects objeto,dicio; // Le dicionario
     tp_table *auxT ; // Le esquema
@@ -393,23 +396,31 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
                 strcat(arquivoIndice, tab2[j].tabelaApt);
                 strcat(arquivoIndice, tab2[j].attApt);
 
-                raizfk = constroi_bplus(arquivoIndice); //verifica se o atributo referenciado pela FK possui indice B+
-                if(raizfk == NULL) { //se não encontra faz a verificação sem indice b+
-        			if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
-        				erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo, tab2[j].tabelaApt, tab2[j].attApt, NULL, objeto, tab2);
-                        if (erro != SUCCESS){
-                            printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
-                            return ERRO_CHAVE_ESTRANGEIRA;
-                        }
-                    }
-                } else { //atributo referenciado possui indice B+
-                    encontrou = buscaChaveBtree(raizfk, temp->valorCampo);
-                    if (!encontrou) {
+                // Carrega a tabela e verifica a existência da FK no buffer, pois a árvore B pode estar desatualizada
+                if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
+                    erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo, tab2[j].tabelaApt, tab2[j].attApt);
+                    if (erro != SUCCESS){
                         printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
                         return ERRO_CHAVE_ESTRANGEIRA;
                     }
-                    erro = SUCCESS;
                 }
+                // raizfk = constroi_bplus(arquivoIndice); //verifica se o atributo referenciado pela FK possui indice B+
+                // if(raizfk == NULL) { //se não encontra faz a verificação sem indice b+
+        		// 	if (strlen(tab2[j].attApt) != 0 && strlen(tab2[j].tabelaApt) != 0){
+        		// 		erro = verificaChaveFK(nome, temp, tab2[j].nome, temp->valorCampo, tab2[j].tabelaApt, tab2[j].attApt);
+                //         if (erro != SUCCESS){
+                //             printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
+                //             return ERRO_CHAVE_ESTRANGEIRA;
+                //         }
+                //     }
+                // } else { //atributo referenciado possui indice B+
+                //     encontrou = buscaChaveBtree(raizfk, temp->valorCampo);
+                //     if (!encontrou) {
+                //         printf("ERROR: invalid reference to \"%s.%s\". The value \"%s\" does not exist.\n", tab2[j].tabelaApt,tab2[j].attApt,temp->valorCampo);
+                //         return ERRO_CHAVE_ESTRANGEIRA;
+                //     }
+                //     erro = SUCCESS;
+                // }
             break;
         }
     }
@@ -1287,8 +1298,13 @@ void createIndex(rc_insert *t) {
   printf("CREATE INDEX\n");
 }
 
-///////
-
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Atualiza tuplas de uma tabela modificando diretamente os dados no buffer.
+    Parametros: Lista de tuplas a serem atualizadas (toUpdateTuples),
+                Nome da tabela (tabelaName),
+                Dados do UPDATE contendo colunas e valores (updateData).
+    Retorno:    Void.
+   ---------------------------------------------------------------------------------------------*/
 void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
     struct fs_objects objeto;
     tp_table *esquema;
@@ -1403,6 +1419,16 @@ void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
                     int erro = verificaChavePK(tabela->nome, NULL, schemaField->nome, updateData->values[updateFieldPos], bufferpoll, objeto, tabela->esquema);
                     if (erro == ERRO_CHAVE_PRIMARIA) {
                         printf("ERROR: cannot update PRIMARY KEY \"%s\" - uniqueness constraint violation.\n", schemaField->nome);
+                        freeTable(tabela);
+                        return;
+                    }
+                }
+
+                // Validação para FK
+                if (schemaField->chave == FK && strlen(schemaField->tabelaApt) > 0) {
+                    int erro = verificaChaveFK(tabela->nome, NULL, schemaField->nome, updateData->values[updateFieldPos], schemaField->tabelaApt, schemaField->attApt);
+                    if (erro == ERRO_CHAVE_ESTRANGEIRA) {
+                        printf("ERROR: cannot update FOREIGN KEY \"%s\" - referenced value does not exist in table \"%s\".\n", schemaField->nome, schemaField->tabelaApt);
                         freeTable(tabela);
                         return;
                     }
