@@ -282,33 +282,14 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
                 ERRO_DE_PARAMETRO,
                 ERRO_CHAVE_PRIMARIA
    ---------------------------------------------------------------------------------------------*/
-int verificaChavePK(char *nomeTabela, column *c, char *nomeCampo, char *valorCampo) {
-    int j, x, erro, page;
+int verificaChavePK(char *nomeTabela, column *c, char *nomeCampo, char *valorCampo, tp_buffer *bufferpoll, struct fs_objects objeto, tp_table *tabela) {
     tupla *pagina = NULL;
 
-    struct fs_objects objeto;
-    tp_table *tabela;
-    tp_buffer *bufferpoll;
-
-    erro = existeAtributo(nomeTabela, c);
-    if (erro != SUCCESS ) {
-        return ERRO_DE_PARAMETRO;
-    }
-
-    if (iniciaAtributos(&objeto, &tabela, &bufferpoll, nomeTabela) != SUCCESS) {
-        return ERRO_DE_PARAMETRO;
-    }
-
-    erro = SUCCESS;
-    for(x = 0; erro == SUCCESS || erro == ERRO_LEITURA_DADOS_DELETADOS; x++)
-        erro = colocaTuplaBuffer(bufferpoll, x, tabela, objeto);
-
-    page = 0;
+    int page = 0;
     for (page = 0; page < PAGES; page++) {
         pagina = getPage(bufferpoll, tabela, objeto, page);
         if (!pagina) break;
-
-        for(j = 0; j < bufferpoll[page].nrec; j++){
+        for(int j = 0; j < bufferpoll[page].nrec; j++){
             for(int i = 0; i < objeto.qtdCampos; i++){
                 column *c = &pagina[j].column[i];
                 if (objcmp(c->nomeCampo, nomeCampo) == 0) {
@@ -1421,6 +1402,16 @@ void op_update(Lista *toUpdateTuples, char *tabelaName, rc_insert *updateData) {
             
             // Se este campo precisa ser atualizado, modifica diretamente no buffer
             if (updateFieldPos >= 0) {
+                // Validação para PK
+                if (schemaField->chave == PK) {
+                    int erro = verificaChavePK(tabela->nome, NULL, schemaField->nome, updateData->values[updateFieldPos], bufferpoll, objeto, tabela->esquema);
+                    if (erro == ERRO_CHAVE_PRIMARIA) {
+                        printf("ERROR: cannot update PRIMARY KEY \"%s\" - uniqueness constraint violation.\n", schemaField->nome);
+                        freeTable(tabela);
+                        return;
+                    }
+                }
+                
                 char *fieldData = tupleData + fieldOffset + t->ncols;
 
                 // Atualiza o valor baseado no tipo
