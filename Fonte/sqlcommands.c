@@ -663,7 +663,7 @@ int validaProj(Lista *proj, tp_table *colunas, int qtdColunas, int *indiceProj){
         rmvNodoPtr(proj, proj->prim);
         proj->prim = proj->ult = NULL;
         for(int j = 0; j < qtdColunas; j++){
-            indiceProj[j] = (char) j;
+            indiceProj[j] = j; //corrigido o (char)
             char *str = uffslloc(sizeof(char) * strlen(colunas[j].nome));
             strcpy(str, colunas[j].nome);
             adcNodo(proj, proj->ult, str);
@@ -1105,7 +1105,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
 
     int *indiceProj = NULL, qtdCamposProj = 0;
     if(tipo == 's') {
-        indiceProj = (int *)uffslloc(sizeof(int) * query->proj->tam);
+        indiceProj = (int *)uffslloc(sizeof(int) * objeto.qtdCampos); //corigido o parametro
         if(!validaProj(query->proj, esquema, objeto.qtdCampos, indiceProj)){
             return NULL;
         }
