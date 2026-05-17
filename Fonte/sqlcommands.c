@@ -591,6 +591,11 @@ void insert(rc_insert *s_insert) {
 	memset(&objeto, 0, sizeof(struct fs_objects));
 	char  flag=0;
 
+    if (!verificaNomeTabela(s_insert->objName)) {
+        printf("ERROR: table \"%s\" does not exist.\n", s_insert->objName);
+        return;
+    }
+
 	abreTabela(s_insert->objName, &objeto, &tabela->esquema); //retorna o esquema para a insere valor
 	strcpylower(tabela->nome, s_insert->objName);
 
