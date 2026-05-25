@@ -760,8 +760,7 @@ Objetivo: Mostrar as tabelas do banco de dados ou, em específico, os atributos 
 void printTable(char *tbl){
 	if(tbl == NULL){     //mostra todas as tabelas do banco
 		FILE *dicionario;
-		printf("		List of Relations\n");
-		char *tupla = (char *)uffslloc(sizeof(char)*TAMANHO_NOME_TABELA);
+		printf("		List of Relations\n"); 
 
 		char directory[LEN_DB_NAME_IO];
     	strcpy(directory, connected.db_directory);
@@ -775,16 +774,35 @@ void printTable(char *tbl){
 		printf(" %-10s | %-15s | %-10s | %-10s\n", "Schema", "Name", "Type", "Owner");
 		printf("------------+-----------------+------------+-------\n");
 		int i=0;
-		while(fgetc (dicionario) != EOF){
-			fseek(dicionario, -1, 1);
-			fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario);
-			printf(" %-10s | %-15s | %-10s | %-10s \n", "public", tupla, "tuple", connected.db_name);
-			fseek(dicionario, 34, 1);
-			i++;
-		}
+
+        //coisas novas
+        char nome[TAMANHO_NOME_TABELA + 1];
+        int codTbl;
+        char nomeArquivo[TAMANHO_NOME_ARQUIVO];
+        int qtdCampos;
+        int qtdIndice;
+        int16_t lastBuffer;
+
+        while(1){
+
+            if(fread(nome, sizeof(char), TAMANHO_NOME_TABELA, dicionario)!= TAMANHO_NOME_TABELA)
+                break;
+
+            nome[TAMANHO_NOME_TABELA] = '\0';
+
+            fread(&codTbl, sizeof(int), 1, dicionario);
+            fread(nomeArquivo,sizeof(char),TAMANHO_NOME_ARQUIVO,dicionario);
+            fread(&qtdCampos, sizeof(int), 1, dicionario);
+            fread(&qtdIndice, sizeof(int), 1, dicionario);
+            fread(&lastBuffer, sizeof(int16_t), 1, dicionario);
+
+            printf(" %-10s | %-15s | %-10s | %-10s \n", "public",nome,"tuple",connected.db_name);
+
+            i++;
+        }
 		fclose(dicionario);
 		printf("(%d %s)\n\n", i, (i<=1)? "row": "rows");
-	} else{               //mostra todos atributos da tabela *tbl
+	} else{   //mostra todos atributos da tabela *tbl
 
 		if(!verificaNomeTabela(tbl)) {
 			printf("Did not find any relation named \"%s\".\n", tbl);

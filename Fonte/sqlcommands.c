@@ -1341,12 +1341,14 @@ int verifyFieldName(char **fieldName, int N){
     return 1;
 }
 
-//////
 void createTable(rc_insert *t) {
+    int tupleSize = 0;//  e o acumulador de tuplas 
+   
   if(strlen(t->objName) > TAMANHO_NOME_TABELA){
       printf("A table name must have no more than %d caracteres.\n",TAMANHO_NOME_TABELA);
       return;
   }
+
   int size;
   strcpylower(t->objName, t->objName);        //muda pra minúsculo
   char *tableName = (char*) uffslloc(sizeof(char)*(TAMANHO_NOME_TABELA+10)),
@@ -1369,6 +1371,7 @@ void createTable(rc_insert *t) {
   int i;
   int PKcount = 0;
   for(i = 0; i < t->N; i++){
+
     if(t->type[i] == 'S') {
   		size = atoi(t->values[i]);
       if(size <= 0) {
@@ -1376,6 +1379,13 @@ void createTable(rc_insert *t) {
         freeTable(tab);
         return;
       }
+
+if(size > BLOCK_SIZE) {
+printf("ERROR: invalid size for column \"%s\": VARCHAR size exceeds memory limit\n", t->columnName[i]);
+freeTable(tab);
+return;
+} 
+
     }
   	else if(t->type[i] == 'I')
   		size = sizeof(int);
@@ -1383,6 +1393,13 @@ void createTable(rc_insert *t) {
   		size = sizeof(double);
     else if(t->type[i] == 'C')
   		size = sizeof(char);
+
+    tupleSize += size; // valor do size
+    if(tupleSize > BLOCK_SIZE ) { // validação para não exceder o limite da tupla
+        printf("ERROR: invalid size %d, size exceeds memory limit of %d\n",tupleSize,BLOCK_SIZE);
+        freeTable(tab);
+        return;
+    }    
 
     if(t->attribute[i] == PK) {
         PKcount++;
@@ -1402,6 +1419,9 @@ void createTable(rc_insert *t) {
   		strcpy(fkTable, "");
   		strcpy(fkColumn, "");
   	}
+
+
+    
     tab = adicionaCampo(tab, t->columnName[i], t->type[i], size, t->attribute[i], fkTable, fkColumn, codFK);
     if((objcmp(fkTable, "") != 0) || (objcmp(fkColumn, "") != 0)){
       if(verifyFK(fkTable, fkColumn) == 0){
@@ -1432,6 +1452,7 @@ void createTable(rc_insert *t) {
 
   if(tab != NULL) freeTable(tab);
 }
+
 
 void createIndex(rc_insert *t) {
   struct fs_objects obj;
