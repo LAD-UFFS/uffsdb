@@ -1,0 +1,108 @@
+# Exemplo de execução do SGBD Ibetres (1.5.15)
+
+# Acesse o caminho "~/DBMS-Interface/Fonte/" pelo shell do seu SO
+
+# Para compilar o programa, execute:
+	$ make
+
+# Para executar o programa, execute:
+	$ ./Ibetres
+
+# Agora você está no shell do Ibetres (por default conectado no banco "ibetres")
+
+# Exemplo de uso do SGBD Ibetres
+
+# Criação de um banco de dados de nome "myDB":
+	CREATE DATABASE myDB;
+
+# Para visualizar os bancos existentes, digite:
+	\l
+
+# Conexão com o banco "myDB":
+	\c myDB
+
+# Criar uma tabela "tbl" com chave PK:
+	CREATE TABLE tbl(
+	 	cod INTEGER PRIMARY KEY,
+		name VARCHAR(20),
+		sex char
+	);
+
+# Criar uma tabela "tbl2" com chave FK na tabela "tbl":
+	CREATE TABLE tbl2(
+		num INTEGER PRIMARY KEY,
+		cod INTEGER REFERENCES tbl(cod)
+	);
+
+# Para visualizar as tabelas existentes no banco, digite:
+	\d
+
+# As tabelas criadas no banco "myDB" não aparecem em outros bancos de dados
+# Para verificar isso, podemos nos conectar ao banco padrão "ibetres" e listar as tabelas com os comandos:
+	\c ibetres
+
+	\d
+
+# Voltando para o banco "myDB":
+	\c myDB
+
+# Para visualizar o esquema das tabelas "tbl" e "tbl2", digite:
+	\t tbl
+	
+	\t tbl2
+
+# Inserir valores na tabela "tbl" (de várias formas):
+	INSERT INTO tbl VALUES (1, 'fulano', 'M');
+	
+	INSERT INTO tbl (cod, name, sex) VALUES (2, 'fulana', 'F');	
+	
+	INSERT INTO tbl (cod, name) VALUES (3, 'ciclano');
+	
+	INSERT INTO tbl (name, cod) VALUES ('beltrano', 4);
+	
+	INSERT INTO tbl (sex, name, cod) VALUES ('M', 'adergides', 5);
+
+# Inserir valores na tabela "tbl2":
+	INSERT INTO tbl2 VALUES (1, 2);
+	
+	INSERT INTO tbl2 VALUES (2, 3);
+	
+	INSERT INTO tbl2 VALUES (3, 2);
+	
+	INSERT INTO tbl2 VALUES (4, 4);
+
+# Verificar os valores inseridos nas tabelas "tbl" e "tbl2":
+	SELECT * FROM tbl;
+	
+	SELECT * FROM tbl2;
+
+# Deletar a tabela "tbl" (veja que esta não pode ser deletada pois está referenciada em "tbl2"):
+	DROP TABLE tbl;
+
+# Antes devemos deletar "tbl2":
+	DROP TABLE tbl2;
+
+# Ao executar o comando abaixo, veremos que "tbl2" foi deletada:
+	\d
+
+# Agora podemos deletar a tabela "tbl":
+	DROP TABLE tbl;
+
+# Ao executar o comando abaixo, veremos que "tbl" também foi deletada:
+	\d 
+
+# Para deletar o banco de dados "myDB" devemos estar desconectados do mesmo
+# Se tentarmos o comando abaixo, será retornado erro
+	DROP DATABASE myDB;
+
+# Podemos nos conectar ao banco de dados padrão, o "ibetres", usando:
+	\c ibetres
+
+# Agora podemos deletar o banco de dados "myDB":
+	DROP DATABASE myDB;
+
+# Executando o comando abaixo, veremos que o banco "myDB" foi excluído:
+	\l
+
+# Para sair do shell do SGBD Ibetres, digite:
+	\q

@@ -1,0 +1,15 @@
+http://www.mathblog.dk/tools/infix-postfix-converter/
+
+select * from t1 where a*3/(2*a) = (b*3)+1;
+
+select * from t1 where (3*2/a-b+a)*(b*(a-2)) = 1;
+
+select * from t1 where (3*2/((a-b)+a))*(b*(a-2)) = 1;
+
+select * from t1 where ((a + b) > (a * 2)) OR a > 2;
+
+select * from t1 where a = 2;
+
+select * from t1 where (a > 35) and ((a+b > (a*2)) or a > 35);
+
+select * from t1 where (a+1 > 2) AND ((2*a = 2) or a/3 > 2 AND b-2 = 1);
