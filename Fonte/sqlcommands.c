@@ -499,10 +499,10 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
                 goto fim;
             }
 
-            char valorCampo[auxT[t].tam];
+            char valorCampo[auxT[t].tam + 1];
             strncpy(valorCampo, auxC->valorCampo, auxT[t].tam);
             //strcat(valorCampo, "\0");
-             valorCampo[auxT[t].tam -1 ] = 0;
+             valorCampo[auxT[t].tam] = 0;
             memcpy(bufferTuple + offsetBuffer, valorCampo, auxT[t].tam);
             offsetBuffer += auxT[t].tam;
         }
@@ -838,7 +838,9 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
     }
 
     // write the last buffer 
-    writeBufferToDisk(buffer, &objeto);
+    if(buffer != NULL){
+        writeBufferToDisk(buffer, &objeto);
+    }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
 }
 
