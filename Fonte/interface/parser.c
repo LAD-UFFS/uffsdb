@@ -260,9 +260,8 @@ void clearGlobalStructs() {
     GLOBAL_DATA.fkTable = NULL;
     GLOBAL_DATA.fkColumn = NULL;
 
-    GLOBAL_DATA.type = (char *)uffslloc(sizeof(char));
-
-    GLOBAL_DATA.attribute = (int *)uffslloc(sizeof(int));
+    GLOBAL_DATA.type = NULL;
+    GLOBAL_DATA.attribute = NULL;
 
     yylex_destroy();
 
