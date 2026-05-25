@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "memoryContext.h"
 #include <ctype.h>
+#include <errno.h>
+#include <math.h>
 
 #ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
    #include "btree.h"
@@ -523,21 +525,29 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
             DEBUG_PRINT("INSERT - Integer value written in file: %d", valorInteiro);
         }
         else if (auxT[t].tipo == 'D'){ // Grava um dado do tipo double.
-          x = 0;
-          while (x < strlen(auxC->valorCampo)){
-              if((auxC->valorCampo[x] < 48 || auxC->valorCampo[x] > 57) && (auxC->valorCampo[x] != 46) && (auxC->valorCampo[x] != 45)){
-                  printf("ERROR: column \"%s\" expect double.\n", auxC->nomeCampo);
-                  erro = ERRO_NO_TIPO_DOUBLE;
-                  goto fim;
-              }
-              x++;
-          }
-          char *endptr;
-          double valorDouble = strtod(auxC->valorCampo, &endptr);
+        x = 0;
+        while (x < strlen(auxC->valorCampo)){
+            if((auxC->valorCampo[x] < 48 || auxC->valorCampo[x] > 57) && (auxC->valorCampo[x] != 46) && (auxC->valorCampo[x] != 45)){
+                printf("ERROR: column \"%s\" expect double.\n", auxC->nomeCampo);
+                erro = ERRO_NO_TIPO_DOUBLE;
+                goto fim;
+            }
+            x++;
+        }
 
+        errno = 0;
 
-          memcpy(bufferTuple + offsetBuffer, &valorDouble, sizeof(double));
-          offsetBuffer += sizeof(valorDouble);
+        char *endptr;
+        double valorDouble = strtod(auxC->valorCampo, &endptr);
+
+        if (errno == ERANGE || valorDouble == HUGE_VAL || valorDouble == -HUGE_VAL) {
+            printf("ERROR: column \"%s\" double value out of range.\n", auxC->nomeCampo);
+            erro = ERRO_NO_TIPO_DOUBLE;
+            goto fim;
+        }
+
+        memcpy(bufferTuple + offsetBuffer, &valorDouble, sizeof(double));
+        offsetBuffer += sizeof(valorDouble);
         }
         else if (auxT[t].tipo == 'C'){ // Grava um dado do tipo char.
 
