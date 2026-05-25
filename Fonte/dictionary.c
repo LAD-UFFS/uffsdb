@@ -740,6 +740,10 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
     strncpy(e->valorCampo, valorCampo,n);
     e->valorCampo[n] = '\0';
 
+    if (tipo == 'I') {
+        sprintf(e->valorCampo, "%d", atoi(e->valorCampo));
+    }
+
     fim:
         if (!c) return e;
         column *aux = c;
