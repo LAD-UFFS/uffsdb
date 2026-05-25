@@ -706,38 +706,75 @@ int finalizaTabela(table *t){
 }
 ////
 // INSERE NA TABELA
-column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {    
+column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
+{
     column *e = (column *)uffslloc(sizeof(column));
-    if (e == NULL) return ERRO_DE_ALOCACAO;
+    if (e == NULL)
+        return ERRO_DE_ALOCACAO;
     e->next = NULL;
 
     int tam = retornaTamanhoValorCampo(nomeCampo, tab);
-    char tipo = retornaTamanhoTipoDoCampo(nomeCampo,tab);
-    int n = strlen(nomeCampo)+1;
+    char tipo = retornaTamanhoTipoDoCampo(nomeCampo, tab);
+
+    // cd /home/uffs/uffsdb/Fonte && make clean && make 2>&1
+    // adicionamos isso:
+    int nTam;
+    if (tipo == 'S')
+    {
+        // printf("é string");
+        nTam = tam;
+    }
+    else
+    {
+        // printf("não string");
+        if (tipo == 'I')
+        {
+            // printf("inteiro");
+            long ajuda = (long)strtol(valorCampo, NULL, 10);
+
+            if (ajuda > INT32_MAX)
+            { // INT32_MAX é o tamanho limite de 32 bits do C
+                printf("ERROR: The integer exceeded the size limite 32 bits\n");
+                
+            }
+            nTam = sizeof(ajuda);
+        }
+    }
+
+    int n = strlen(nomeCampo) + 1;
 
     /**
      * Verifica se o nome ultrapassa o limite, se sim trunca
      */
-    if (n > TAMANHO_NOME_CAMPO) {
+    if (n > TAMANHO_NOME_CAMPO)
+    {
         n = TAMANHO_NOME_CAMPO;
         printf("WARNING: field name exceeded the size limit and was truncated.\n");
     }
-    strncpylower(e->nomeCampo, nomeCampo, n-1);
+    strncpylower(e->nomeCampo, nomeCampo, n - 1);
 
-    if(valorCampo == COLUNA_NULL){
+    if (valorCampo == COLUNA_NULL)
+    {
         e->valorCampo = COLUNA_NULL;
         goto fim;
     }
-    
-    int nTam = (tipo == 'S') ? tam : strlen(valorCampo);
 
-    e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam+1));
-    if (e->valorCampo == NULL) {
+    // comentamos isso:
+    // int nTam = (tipo == 'S') ? tam : strlen(valorCampo); // é uma string? se sim, recebe tam; se não, usa o tamanho real digitado
+
+    e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam + 1));
+    if (e->valorCampo == NULL)
+    {
         return ERRO_DE_ALOCACAO;
     }
     n = strlen(valorCampo);
+    if (tipo == 'S' && n > tam)
+    {
+        n = tam;
+        printf("WARNING: value of column \"%s\" exceeded the size limit and was truncated.\n", nomeCampo);
+    }
 
-    strncpy(e->valorCampo, valorCampo,n);
+    strncpy(e->valorCampo, valorCampo, n);
     e->valorCampo[n] = '\0';
 
     if (tipo == 'I') {
@@ -750,7 +787,7 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
         while (aux->next) aux = aux->next;
         aux->next = e;
 
-        return c;
+    return c;
 }
 //////
 /*------------------------------------------------------------------------------------------
