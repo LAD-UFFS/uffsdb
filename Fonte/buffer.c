@@ -244,6 +244,11 @@ int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto->nArquivo);
 
+    if(buffer==NULL){
+        printf("ERROR: empty buffer\n");
+        return 0;
+    }
+
     FILE *dados = fopen(directory, "r+b");
     if (!dados) {
         printf("ERROR: Unable to open file for writing.\n");

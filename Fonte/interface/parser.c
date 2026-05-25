@@ -338,7 +338,9 @@ int interface() {
                             break;
                         case OP_UPDATE:
                             resultado = handleTableOperation(&QUERY, 'u');
-                            op_update(resultado, &QUERY);
+                            if(resultado->prim && resultado->tam > 0){
+                                op_update(resultado, &QUERY);
+                            }else printf("UPDATED 0 rows\n");
                             break;
                         case OP_CREATE_TABLE:
                             createTable(&GLOBAL_DATA);
