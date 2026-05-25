@@ -590,7 +590,13 @@ void insert(rc_insert *s_insert) {
 		if (allColumnsExists(s_insert, tabela)){
 			for (esquema = tabela->esquema; esquema != NULL; esquema = esquema->next){
 				if(typesCompatible(esquema->tipo,getInsertedType(s_insert, esquema->nome, tabela))){
-					colunas = insereValor(tabela, colunas, esquema->nome, getInsertedValue(s_insert, esquema->nome, tabela));
+				    char *valor = getInsertedValue(s_insert, esquema->nome, tabela);
+				    if (esquema->tipo == 'S' && valor != NULL && valor != COLUNA_NULL && (int)strlen(valor) > esquema->tam) {
+				        printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", esquema->nome, esquema->tam, (int)strlen(valor));
+				        flag=1;
+				    } else {
+				        colunas = insereValor(tabela, colunas, esquema->nome, valor);
+				    }
 				}
         else {
 					printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n", esquema->nome, tabela->nome, esquema->tipo, getInsertedType(s_insert, esquema->nome, tabela));
@@ -616,7 +622,12 @@ void insert(rc_insert *s_insert) {
 				}
 
 				if(s_insert->type[i] == tabela->esquema[i].tipo)
-					colunas = insereValor(tabela, colunas, tabela->esquema[i].nome, s_insert->values[i]);
+				    if (tabela->esquema[i].tipo == 'S' && s_insert->values[i] != NULL && s_insert->values[i] != COLUNA_NULL && (int)strlen(s_insert->values[i]) > tabela->esquema[i].tam) {
+				        printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", tabela->esquema[i].nome, tabela->esquema[i].tam, (int)strlen(s_insert->values[i]));
+				        flag=1;
+				    } else {
+				        colunas = insereValor(tabela, colunas, tabela->esquema[i].nome, s_insert->values[i]);
+				    }
 				else {
 					printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n", tabela->esquema[i].nome, tabela->nome, tabela->esquema[i].tipo, s_insert->type[i]);
 					flag=1;
