@@ -736,13 +736,13 @@ column *insereValor(table  *tab, column *c, char *nomeCampo, char *valorCampo) {
         return ERRO_DE_ALOCACAO;
     }
     n = strlen(valorCampo);
-    if (tipo == 'S' && n > tam) {
-        n = tam;
-        printf("WARNING: value of column \"%s\" exceeded the size limit and was truncated.\n", nomeCampo);
-    }
 
     strncpy(e->valorCampo, valorCampo,n);
     e->valorCampo[n] = '\0';
+
+    if (tipo == 'I') {
+        sprintf(e->valorCampo, "%d", atoi(e->valorCampo));
+    }
 
     fim:
         if (!c) return e;
