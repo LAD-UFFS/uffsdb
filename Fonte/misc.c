@@ -32,7 +32,7 @@ int cabecalho(tp_table *s, int num_reg) {
     return aux;
 }
 ///////
-int drawline(tp_buffer *buffpoll, tp_table *s, struct fs_objects objeto, int p, int num_page) {
+int drawline(tp_pagina *buffpoll, tp_table *s, struct fs_objects objeto, int p, int num_page) {
 
     if (num_page > PAGES || p > SIZE) {
         return ERRO_DE_PARAMETRO;

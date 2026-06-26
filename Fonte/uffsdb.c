@@ -21,12 +21,16 @@
 #endif
 
 #include "interface/y.tab.h"
+#include "buffer.h"
 
 
 db_connected connected;
+buffer_pool bp; // melhor criar uma variável global pra ser o buffer pool
 
 int main(){
     dbInit(NULL);
+
+    initBufferPool(PAGES);
     
     printf("uffsdb (16.2).\nType \"help\" for help or \"implement\" for seeing what is or not is implemented in this project.\n\n");
     

@@ -34,6 +34,9 @@
 #ifndef FEXPRESSAO
   #include "Expressao.h"
 #endif
+#ifndef FBUFFERMANAGER
+  #include "bufferManager.h"
+#endif
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Recebe o nome de uma tabela e engloba as funções leObjeto() e leSchema().
     Parametros: Nome da Tabela, Objeto da Tabela e tabela.
@@ -423,18 +426,18 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
 	}
     long int offset = ftell(dados);
 
-    tp_buffer *buffer;
+    tp_pagina *buffer;
     if (objeto.lastBuffer == -1){
-        buffer = initBuffer(0);
+        buffer = initPagina(0);
         objeto.lastBuffer = 0;
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto); 
     } else {
-        buffer = getBlock(objeto.lastBuffer, directory);
+        buffer = bm_getBlock(objeto.cod, objeto.lastBuffer, directory);
         if(buffer == NULL) return ERRO_ABRIR_ARQUIVO;
 
         if (buffer->position + tamTupla >= SIZE) {
-            buffer = initBuffer(objeto.lastBuffer + 1);
+            buffer = initPagina(objeto.lastBuffer + 1);
             objeto.lastBuffer++;
             updateSchema(&objeto); 
         }
@@ -568,9 +571,9 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     memcpy(buffer->data + buffer->position, bufferTuple, tamTupla);
     buffer->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
-    fseek(dados, buffer->id * sizeof(tp_buffer), SEEK_SET);
-    fwrite(buffer, sizeof(tp_buffer), 1, dados);
-    DEBUG_PRINT("INSERT - Block size written in file: %d",  sizeof(tp_buffer));
+    fseek(dados, buffer->id * sizeof(tp_pagina), SEEK_SET);
+    fwrite(buffer, sizeof(tp_pagina), 1, dados);
+    DEBUG_PRINT("INSERT - Block size written in file: %d",  sizeof(tp_pagina));
 
     fim: //label para liberar a memória utilizada e fechar o arquivo de dados
         fclose(dados);
@@ -840,7 +843,7 @@ void adcResultado(Lista *resultado, tupla *tuple, int *indiceProj, int qtdColuna
    ---------------------------------------------------------------------------------------------*/
 void op_delete(Lista *toDeleteTuples, char *tabelaName) {
     struct fs_objects objeto = leObjeto(tabelaName);
-    tp_buffer *buffer = NULL;
+    tp_pagina *pagina = NULL;
     int countDeletedTuples = 0;
 
     char directory[LEN_DB_NAME_IO];
@@ -849,23 +852,37 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
         
     for (Nodo *temp = toDeleteTuples->prim; temp; temp = temp->prox) {
         tupla *t = (tupla *)temp->inf;
-        if(!buffer ) buffer = getBlock(t->bufferPage, directory);
-        else if (buffer->id != t->bufferPage) {
+        if(!pagina ) pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
+        else if (pagina->id != t->bufferPage) {
         // como as tuplas estão ordenadas fisicamente, isto reduz o IO. Quando o bufferpool tiver implementado, nem precisa
-            buffer->db = 0;
-            buffer->pc = 0;
-            writeBufferToDisk(buffer, &objeto);
-            buffer = getBlock(t->bufferPage, directory);
+            // buffer->db = 0;
+            // buffer->pc = 0;    
+            for (int i = 0; i < bp.qtd_paginas_total; i++) {
+                if (&bp.paginas[i] == pagina) {
+                    bp.header[i].db = 0;
+                    bp.header[i].pc = 0;
+                    break;
+                }
+            }
+            writeBufferToDisk(pagina, &objeto);
+            pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
-        buffer->data[t->offset] = 1; //marca a tupla como deletada
-        buffer->db = 1; //marca a página como modificada
-        buffer->nrec--;
+        pagina->data[t->offset] = 1; //marca a tupla como deletada
+        // TEMOS QUE AJUSTAR:
+        // buffer->db = 1; //marca a página como modificada
+        for (int i = 0; i < bp.qtd_paginas_total; i++) {
+            if (&bp.paginas[i] == pagina) { // compara os endereços
+                bp.header[i].db = 1;
+                break;
+            }
+        }
+        pagina->nrec--;
         countDeletedTuples++;
     }
 
     // write the last buffer 
-    if(buffer != NULL){
-        writeBufferToDisk(buffer, &objeto);
+    if(pagina != NULL){
+        writeBufferToDisk(pagina, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
 }
@@ -1030,7 +1047,7 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
     tp_table *esquema;
     struct fs_objects objeto = leObjeto(query->tabela);
     esquema = leSchema(objeto);
-    tp_buffer *buffer = NULL;
+    tp_pagina *pagina = NULL;
     int countUpdateTuples = 0;
 
     table *tabela = (table *)uffslloc(sizeof(table));
@@ -1048,10 +1065,10 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
 
     for (Nodo *temp = toUpdateTuples->prim; temp; temp = temp->prox){
         tupla *t = (tupla *)temp->inf;
-        if(!buffer) buffer = getBlock(t->bufferPage, directory);
-        else if (buffer->id != t->bufferPage) {
-            writeBufferToDisk(buffer, &objeto);
-            buffer = getBlock(t->bufferPage, directory);
+        if(!pagina) pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
+        else if (pagina->id != t->bufferPage) {
+            writeBufferToDisk(pagina, &objeto);
+            pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
 
         int offsetVal = 0;
@@ -1067,35 +1084,43 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
                     // Atualiza o valor na tupla
                     if (col.tipoCampo == 'I')  {
                         int v = atoi(newValue);
-                        void *end_data = buffer->data + t->offset + 1 + offsetVal + t->ncols;
+                        void *end_data = pagina->data + t->offset + 1 + offsetVal + t->ncols;
                         memcpy(end_data, &v, tamanho);
                     } else if (col.tipoCampo == 'D') {
                         double v = atof(newValue);
-                        void *end_data = buffer->data + t->offset + 1 + offsetVal + t->ncols;
+                        void *end_data = pagina->data + t->offset + 1 + offsetVal + t->ncols;
                         memcpy(end_data, &v, tamanho);
                     } else {
 
-                        void *end_data = buffer->data + t->offset + 1 + offsetVal + t->ncols;
+                        void *end_data = pagina->data + t->offset + 1 + offsetVal + t->ncols;
                         memcpy(end_data, newValue, tamanho);
                     }
                 }
                 valNode = valNode->prox;
             }
-            buffer[t->bufferPage].db = 1; // marca a página como modificada
+            // TEMOS QUE AJUSTAR:
+            // buffer[t->bufferPage].db = 1; // marca a página como modificada
+            // ajustando:
+            for (int i = 0; i < bp.qtd_paginas_total; i++) {
+                if (&bp.paginas[i] == pagina) { // compara os endereços
+                    bp.header[i].db = 1;
+                    break;
+                }
+            }
             offsetVal += tamanho;
         }
 
         countUpdateTuples++;
     }
 
-    writeBufferToDisk(buffer, &objeto);
+    writeBufferToDisk(pagina, &objeto);
 
     printf("UPDATED %d %s\n", countUpdateTuples, (countUpdateTuples != 1) ? "rows" : "row");
 }
 
 Lista *handleTableOperation(inf_query *query, char tipo) {
     tp_table *esquema;
-    // tp_buffer* bufferpoll;
+    // tp_pagina* bufferpoll;
     struct fs_objects objeto;
     if(!verificaNomeTabela(query->tabela)){
         printf("\nERROR: relation \"%s\" was not found.\n\n\n", query->tabela);

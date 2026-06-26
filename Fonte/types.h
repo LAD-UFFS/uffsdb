@@ -51,15 +51,17 @@ typedef struct table{ // Estrutura utilizada para criar uma tabela.
     tp_table *esquema;              // Esquema de campos da tabela.
 }table;
 
-typedef struct tp_buffer{ // Estrutura utilizada para armazenar o buffer.
-    unsigned int id;        // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
-    unsigned int nrec;       //Número de registros armazenados na página.
-    uint32_t position;   // Número da quantidade de registro que a página ainda pode receber;
-    // TODO: Separar a struct o que precisar ser persistida e o que fica na memória
-    unsigned char db;        //Dirty bit
-    unsigned char pc;        //Pin counter
-    char data[SIZE];         // Dados
-}tp_buffer;
+// // mudamos o nome de "tp_buffer" para "tp_pagina":
+// // também tiramos pc e db da página, pois o professor disse que eles não eram para ir para disco, mas sim ficar só na memória
+// typedef struct tp_pagina{ // Estrutura utilizada para armazenar o buffer.
+//     unsigned int id;        // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
+//     unsigned int nrec;       //Número de registros armazenados na página.
+//     uint32_t position;   // Número da quantidade de registro que a página ainda pode receber;
+//     // TODO: Separar a struct o que precisar ser persistida e o que fica na memória
+//     // unsigned char db;        //Dirty bit
+//     // unsigned char pc;        //Pin counter
+//     char data[SIZE];         // Dados
+// }tp_pagina;
 
 typedef struct rc_insert {
     char    *objName;           // Nome do objeto (tabela, banco de dados, etc...)
@@ -156,10 +158,41 @@ union c_int{
     char cnum[sizeof(int)];
 };
 
+
+// structs que criamos:
+
+// #define QTD_PAGINAS_BUFFER_POOL 50; // vimos que já tem uma constante que diz isso na macros.h, com nome PAGES
+#define TAM_PAGINA_BF 400
+
+typedef struct um_slot_do_header_do_buffer_pool {
+    int id_tabela; // qual tabela ocupa este slot (-1 = slot livre)
+    int bloco_da_tabela; // qual bloco da tabela "id_tabela" está neste slot
+    unsigned char db; //Dirty bit
+    unsigned char pc; //Pin counter
+} um_slot_do_header_do_buffer_pool;
+
+typedef struct tp_pagina{ // Estrutura utilizada para armazenar cada página.
+    unsigned int id; // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
+    unsigned int nrec; //Número de registros armazenados na página.
+    uint32_t position; // Tamanho total dos registro que tem na página
+    char data[SIZE]; // são os dados da página (as tuplas) -> SIZE = 1024 bytes de dados
+} tp_pagina;
+
+typedef struct buffer_pool {//estrutura do buffer poll
+	int qtd_paginas_total;
+	int qtd_paginas_ocupadas;
+	int qtd_paginas_desocupadas;
+	um_slot_do_header_do_buffer_pool header[PAGES]; // esse vai ser o header do buffer pool: cada índice desse vetor vai ter informações sobre o índice correspondente vetor da área de dados (vetor "páginas") 
+	tp_pagina paginas[PAGES]; // área onde vão estar todas as páginas que estão no BP
+} buffer_pool;
+
+
 /************************************************************************************************
 **************************************  VARIAVEIS GLOBAIS  **************************************/
 
 extern db_connected connected;
+
+extern buffer_pool bp; // coloquei aqui pois é uma variável global
 
 /************************************************************************************************
  ************************************************************************************************/

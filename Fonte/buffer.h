@@ -15,7 +15,7 @@
     *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
     *num_page - Número da página a ser impressa
 */
-int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, int num_page);
+int printbufferpoll(tp_pagina *buffpoll, tp_table *s,struct fs_objects objeto, int num_page);
 /*
     Esta função insere uma tupla em uma página do buffer em que haja espaço suficiente.
     Retorna ERRO_BUFFER_CHEIO caso não haja espeço para a tupla
@@ -26,18 +26,18 @@ int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, i
     *campos - Estrutura que armazena esquema da tabela para ler os dados do buffer
     *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
 */
-int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto);
+int colocaTuplaBuffer(tp_pagina *buffer, int from, tp_table *campos, struct fs_objects objeto);
 
 /*
     Esta função recebe um arquivo e o id do buffer,
     retorna o buffer carregado ou erro. toma toma.
 */
-tp_buffer *getBlock(unsigned int id, char* filename);
+tp_pagina *getBlock(unsigned int id, char* filename);
 
-/*
-    Retorna um buffer iniciado top top. 
-*/
-tp_buffer * initBuffer(unsigned int id);
+tp_pagina *initPagina(unsigned int id);
+
+// inicializa o buffer pool com a quantidade de páginas dada
+void initBufferPool(int qtd_paginas);
 
 /*
     Esta função recupera uma página do buffer e retorna a mesma em uma estrutura do tipo tupla
@@ -57,19 +57,19 @@ PageResult * getPage(tp_table *campos, struct fs_objects objeto, int page);
     *nTupla - Número da tupla a ser excluida, este número é relativo a página do buffer e não a
               todos os registros carregados
 */
-column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
+column * excluirTuplaBuffer(tp_pagina *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
 ////
 char *getTupla(tp_table *campos,struct fs_objects objeto, int from);
 
-void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos);
+void setTupla(tp_pagina *buffer,char *tupla, int tam, int pos);
 ////
 void cria_campo(int , int , char *, int );
 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
-    Parametros: Buffer (tp_buffer) e dados da tabela (fs_objects)
+    Parametros: Buffer (tp_pagina) e dados da tabela (fs_objects)
     Retorno:    1 para sucesso, 0 para falha.
    ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_buffer *bufferpool, struct fs_objects *objeto);
+int writeBufferToDisk(tp_pagina *bufferpool, struct fs_objects *objeto);
 
 void addColumn(column **colList, column *c);
