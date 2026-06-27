@@ -1,11 +1,11 @@
 #define FBUFFER 1 // flag controlar os includes
 
 #ifndef FMACROS // garante que macros.h não seja reincluída
-   #include "macros.h"
+#include "macros.h"
 #endif
 //
 #ifndef FTYPES // garante que types.h não seja reincluída
-  #include "types.h"
+#include "types.h"
 #endif
 
 /*
@@ -15,7 +15,7 @@
     *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
     *num_page - Número da página a ser impressa
 */
-int printbufferpoll(tp_pagina *buffpoll, tp_table *s,struct fs_objects objeto, int num_page);
+int print_tabela_bloco(tp_pagina *pagina, tp_table *s, struct fs_objects objeto, int num_page);
 /*
     Esta função insere uma tupla em uma página do buffer em que haja espaço suficiente.
     Retorna ERRO_BUFFER_CHEIO caso não haja espeço para a tupla
@@ -32,7 +32,7 @@ int colocaTuplaBuffer(tp_pagina *buffer, int from, tp_table *campos, struct fs_o
     Esta função recebe um arquivo e o id do buffer,
     retorna o buffer carregado ou erro. toma toma.
 */
-tp_pagina *getBlock(unsigned int id, char* filename);
+tp_pagina *getBlock(unsigned int id, char *filename);
 
 tp_pagina *initPagina(unsigned int id);
 
@@ -46,7 +46,7 @@ void initBufferPool(int qtd_paginas);
     *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
     *page - Número da página a ser recuperada (0 a PAGES)
 */
-PageResult * getPage(tp_table *campos, struct fs_objects objeto, int page);
+PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page);
 /*
     Esta função uma determinada tupla do buffer e retorna a mesma em uma estrutura do tipo column;
     A estrutura column possui informações de como manipular os dados
@@ -57,13 +57,13 @@ PageResult * getPage(tp_table *campos, struct fs_objects objeto, int page);
     *nTupla - Número da tupla a ser excluida, este número é relativo a página do buffer e não a
               todos os registros carregados
 */
-column * excluirTuplaBuffer(tp_pagina *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
+column *excluirTuplaBuffer(tp_pagina *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
 ////
-char *getTupla(tp_table *campos,struct fs_objects objeto, int from);
+char *getTupla(tp_table *campos, struct fs_objects objeto, int from);
 
-void setTupla(tp_pagina *buffer,char *tupla, int tam, int pos);
+void setTupla(tp_pagina *buffer, char *tupla, int tam, int pos);
 ////
-void cria_campo(int , int , char *, int );
+void cria_campo(int, int, char *, int);
 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
