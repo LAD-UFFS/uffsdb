@@ -65,3 +65,20 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
 // PageResult *bm_getPage(/*...*/) {
 
 // }
+
+
+void bm_printHeaderBufferPool()
+{
+    printf("\n------ Header Buffer Pool ------\n");
+    printf("total: %d | ocupados: %d | livres: %d\n\n", bp.qtd_paginas_total, bp.qtd_paginas_ocupadas, bp.qtd_paginas_desocupadas);
+    printf("slot       id_tabela  bloco    dp      pc\n");
+    for (int i = 0; i < bp.qtd_paginas_total; i++)
+    {
+        if (bp.header[i].id_tabela == -1)
+        {
+            continue; // pulando slots livres
+        }
+        printf("%d          %d          %d        %d       %d\n", i, bp.header[i].id_tabela, bp.header[i].bloco_da_tabela, bp.header[i].db, bp.header[i].pc);
+    }
+    printf("---------------------------------\n");
+}
