@@ -13,6 +13,7 @@
 
 #include "misc.h"
 #include "dictionary.h"
+#include "bufferManager.h"
 
 static int isDeleted(char *linha);
 
@@ -109,7 +110,9 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto.nArquivo);
 
-    tp_pagina *pagina = getBlock((unsigned int) page, directory);
+    // tp_pagina *pagina = getBlock((unsigned int) page, directory);
+    tp_pagina *pagina = bm_getBlock(objeto.cod, page, directory);
+    printf("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
 
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (pagina->nrec)); //Aloca a quantidade de tuplas necessária
 
@@ -157,6 +160,8 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
     PageResult *pg = (PageResult *)uffslloc(sizeof(PageResult));
     pg->tuplas = tuplas;
     pg->nrec = indiceTupla;
+
+    printf("getPage: bloco %d da tabela '%s' tem %d tupla(s)\n", page, objeto.nome, indiceTupla);
 
     return pg; //Retorna a 'page' do buffer
 }

@@ -20,7 +20,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
     // vendo se o bloco (id_bloco) da tabela (id_tabela) já está no buffer pool:
     for (int i = 0; i < bp.qtd_paginas_total; i++) {
         if (bp.header[i].id_tabela == id_tabela &&  bp.header[i].bloco_da_tabela == id_bloco) {
-            printf("bufferManager: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
+            printf("bm_getBlock: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
             return &bp.paginas[i]; // página já está no buffer
         }
     }
@@ -42,7 +42,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
         exit(1);
     }
 
-    printf("bufferManager: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco\n", id_bloco, id_tabela, filename);
+    printf("bm_getBlock: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco\n", id_bloco, id_tabela, filename);
     tp_pagina *bloco = getBlock((unsigned int)id_bloco, filename);
 
     // copiando o conteúdo do bloco para o slot livre que achamos do buffer pool (copiando o conteúdo mesmo (por isso "*bloco")
@@ -58,3 +58,10 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
 
     return &bp.paginas[indice_disponivel];
 }
+
+
+// como getPage chama getBlock dentro dela, não tem como fazer o bm_getPage da mesma forma que eu fiz o bm_getBlock (chamei getBlock dentro de bm_getBlock para ele fazer o trabalho dele, sem alterar getBlock), pq se bm_getPage chamasse getPage, o getPage leria do disco toda vez (pq ele chama getBlock), e daí o buffer nem seria usado
+// estava pensando como iria fazer esse intermediário para o getPage (bm_getPage), e daí pensei que eu poderia não fazer ele, e simplesmente mudar o getPage mesmo, para ele chamar bm_getBlock em vez de getBlock, pq daí ao invés de buscar no disco toda vez, ele chama bm_getBlock, que já verifica se o bloco tá no buffer, e esse é o objetivo (usar o buffer ao invés de toda vez buscar direto no disco)
+// PageResult *bm_getPage(/*...*/) {
+
+// }

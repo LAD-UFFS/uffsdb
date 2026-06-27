@@ -7,6 +7,7 @@
 
 #define FTYPES 1 // flag para identificar se types.h já foi incluída
 
+// isso é um registro da TABELA
 struct fs_objects { // Estrutura usada para carregar fs_objects.dat
     char nome[TAMANHO_NOME_TABELA];      // Nome da tabela.
     int cod;                             // Código da tabela.
@@ -37,7 +38,7 @@ typedef struct column{ // Estrutura utilizada para inserir em uma tabela, exclui
 typedef struct tupla {
     unsigned int offset;
     uint ncols; // Número de colunas na tupla.
-    uint bufferPage; // Página do buffer onde a tupla está armazenada.
+    uint bufferPage; // Número do bloco (no disco) onde essa tupla específica está dentro do arquivo da tabela (bloco 0, bloco 1, etc. da tabela)
     column *column;
 }tupla;
 
@@ -165,7 +166,7 @@ union c_int{
 #define TAM_PAGINA_BF 400
 
 typedef struct um_slot_do_header_do_buffer_pool {
-    int id_tabela; // qual tabela ocupa este slot (-1 = slot livre)
+    int id_tabela; // qual tabela ocupa este slot (-1 = slot livre) // = fs_objects.cod (ou seja: o id/código da tabela)
     int bloco_da_tabela; // qual bloco da tabela "id_tabela" está neste slot
     unsigned char db; //Dirty bit
     unsigned char pc; //Pin counter
