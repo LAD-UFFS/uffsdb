@@ -105,7 +105,8 @@ int getMaxPrimaryKey(char *nomeTabela) {
 
     int maiorPK = -1; 
     for (int page = 0; page <= objeto.lastBuffer; page++) {
-        pagina = getPage(esquema, objeto, page);
+        int erro;
+        pagina = readBufferPage(esquema, &objeto, page, &erro);
         if (!pagina) continue;
 
         for (int i = 0; i < pagina->nrec; i++) {
@@ -211,7 +212,8 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
     }
 
     for (page = 0; page < PAGES; page++) {
-        pagina = getPage(tabela, objeto, page);
+        int erro;
+        pagina = readBufferPage(tabela, &objeto, page, &erro);
         if (!pagina) break;
         /*
         * Pq ele percorre todas as tuplas para verificar ??????
@@ -283,7 +285,8 @@ int verificaChavePK(char *nomeTabela, column *c, char *nomeCampo, char *valorCam
 
     page = 0;
     for (page = 0; page < PAGES; page++) {
-        pagina = getPage(tabela, objeto, page);
+        int erro;
+        pagina = readBufferPage(tabela, &objeto, page, &erro);
         if (!pagina) break;
 
         for(j = 0; j < pagina->nrec; j++){
@@ -1122,7 +1125,8 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     PageResult *pagina;
     Lista *resultado = novaLista(NULL);
     for(int p = 0; p <= objeto.lastBuffer ; p++) {
-        pagina = getPage(esquema, objeto, p);
+        int erro;
+        pagina = readBufferPage(esquema, &objeto, p, &erro);
         if(pagina == ERRO_PARAMETRO){
             printf("ERROR: could not open the table.\n");
             return NULL;

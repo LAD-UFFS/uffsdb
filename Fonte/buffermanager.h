@@ -21,7 +21,7 @@ void bufferInit();
    Parametros: esquema da tabela (tp_table), dados da tabela (fs_objects), número da página.
    Retorno: PageResult* com as tuplas da página, ou código de erro.
 ---------------------------------------------------------------------------------------------- */
-PageResult *readBufferPage(tp_table *campos, struct fs_objects *table, int page);
+PageResult *readBufferPage(tp_table *campos, struct fs_objects *table, int page, int *error_value);
 
 /* ----------------------------------------------------------------------------------------------
    Análoga à antiga getBlock. Procura a página "id" da tabela na lista encadeada do
