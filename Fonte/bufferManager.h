@@ -17,3 +17,6 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename);
 
 // imprime o header do buffer
 void bm_printHeaderBufferPool();
+
+// função para a política de troca de páginas em algoritmo do relógio
+int algoritmo_clock();

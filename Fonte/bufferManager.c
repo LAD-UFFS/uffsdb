@@ -16,7 +16,7 @@
 #include "buffer.h"
 #include "bufferManager.h"
 
-int pagina_da_vez_para_sair = 0;
+static int pagina_da_vez_para_sair = 0; // variável que vai guardar o índice da página pra expulsão de página em relógio no buffer pool. começo com 0 pq a primeira página a ser escrita é a 0. Só entra em ação quando buffer está cheio ou usuário faz exit
 
 // intermediário para o getBlock (testei os comandos (insert, delete...) e funcionou normalmente. As impressões que dizem se o bloco está ou não no buffer parecem funcionar. Mas não criei uma função de imprimir o buffer pra conferir o buffer)
 // verifica se o bloco id_bloco da tabela id_tabela já está no buffer. Se estiver, retorna um ponteiro para ele. Se não estiver, lê o bloco do disco com getBlock, copia para o primeiro slot livre do buffer, atualiza o header dele e retorna um ponteiro para esse slot
@@ -74,16 +74,43 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     return &bp.paginas[indice_disponivel];
 }
 
-// função intermediária do WriteBufferToDisk (ele não pode ser acessado diretamente)
+void bm_printHeaderBufferPool()
+{
+    printf("\n------ Header Buffer Pool ------\n");
+    printf("total: %d | ocupados: %d | livres: %d\n\n", bp.qtd_paginas_total, bp.qtd_paginas_ocupadas, bp.qtd_paginas_desocupadas);
+    printf("slot       id_tabela  bloco    dp      pc\n");
+    for (int i = 0; i < bp.qtd_paginas_total; i++)
+    {
+        if (bp.header[i].id_tabela == -1)
+        {
+            continue; // pulando slots livres
+        }
+        printf("%d          %d          %d        %d       %d\n", i, bp.header[i].id_tabela, bp.header[i].bloco_da_tabela, bp.header[i].db, bp.header[i].pc);
+    }
+    printf("---------------------------------\n");
+}
 
+// função intermediária do WriteBufferToDisk (ele não pode ser acessado diretamente)
 // função que gerencia a saída de uma página do buffer pool, organizando sua escrita no disco
 tp_pagina *bm_writeBufferToDisk(struct fs_objects *objeto)
 {
+    int indice_pagina_para_subtituir = algoritmo_clock();
+    bm.pagina = &bp.paginas[indice_pagina_para_subtituir]; // buffer manager aponta para a página que vai sair
 
+    if (bp.header[indice_pagina_para_subtituir].db == 1 && bp.header[indice_pagina_para_subtituir].pc == 0)
+    { // só entra aqui se a página vai ser escrita realmente no disco
+        writeBufferToDisk(bm.pagina, objeto);
+    }
+
+    return bm.pagina;
+}
+
+int algoritmo_clock()
+{ // retorna id do bloco substituido
     // variável para guardar o valor do índice da página pro return, pq é melhor quando entrar na função já ter um valor pra começar, sem ter que ficar procurando
     int indice_pagina = 0;
 
-    while (pagina_da_vez_para_sair < (bp.qtd_paginas_total - 1))
+    while (pagina_da_vez_para_sair <= (bp.qtd_paginas_total - 1))
     {
         printf("pc= %d e db= %d\n", bp.header[pagina_da_vez_para_sair].db, bp.header[pagina_da_vez_para_sair].pc);
         if (pagina_da_vez_para_sair > (bp.qtd_paginas_total - 1))
@@ -97,19 +124,18 @@ tp_pagina *bm_writeBufferToDisk(struct fs_objects *objeto)
             indice_pagina = pagina_da_vez_para_sair;
             pagina_da_vez_para_sair++;
 
-            return &bp.paginas[indice_pagina];
+            return indice_pagina;
         }
         else if (bp.header[pagina_da_vez_para_sair].db == 1 && bp.header[pagina_da_vez_para_sair].pc == 0)
         { // if dirty bit da pagina que vai sair é 1 e e pin count  é 0, tem que escrveer no disco antes de tirar a págian
 
-            writeBufferToDisk(&bp.paginas[pagina_da_vez_para_sair], objeto);
             printf("Pagina de indice %d foi escolhida para sair\n", pagina_da_vez_para_sair);
             indice_pagina = pagina_da_vez_para_sair;
             pagina_da_vez_para_sair++;
 
-            return &bp.paginas[indice_pagina];
+            return indice_pagina;
         }
         pagina_da_vez_para_sair++;
     }
-    return NULL;
+    return -1;
 }

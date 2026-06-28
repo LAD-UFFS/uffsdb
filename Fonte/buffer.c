@@ -94,6 +94,22 @@ void initBufferPool(int qtd_paginas)
     }
 }
 
+buffer_manager *initBufferManager()
+{
+    buffer_manager *bm = uffslloc(sizeof(buffer_manager));
+
+    if (bm == NULL)
+    {
+        printf("ERROR: Falha na alocação de memoria do buffer manager\n\n");
+        return NULL;
+    }
+
+    bm->politicaTroca = algoritmo_clock; // sem parentese, que é só pra guardar essa politica, sem executar
+    bm->pagina = NULL;                   // inicia sem apontar pra nenhuma página
+
+    return bm;
+}
+
 // serve pra todas as operação que precisam trazer um bloco do disco (SELECT, DELETE e UPDATE)
 // toda vez que ele é chamado, ele lê do disco
 tp_pagina *getBlock(unsigned int id, char *filename)
@@ -116,10 +132,11 @@ tp_pagina *getBlock(unsigned int id, char *filename)
 }
 
 // RETORNA PAGINA DO BUFFER
-PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
+PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
+{
 
-    if(page >= PAGES || page < 0) return ERRO_PAGINA_INVALIDA;
-
+    if (page >= PAGES || page < 0)
+        return ERRO_PAGINA_INVALIDA;
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -139,11 +156,13 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
     if (!pagina->position)
         return NULL;
 
-    char *nullos =(char *)uffslloc(objeto.qtdCampos * sizeof(char));
+    char *nullos = (char *)uffslloc(objeto.qtdCampos * sizeof(char));
 
-    while (i < pagina->position){
+    while (i < pagina->position)
+    {
 
-        if (isDeleted(pagina->data + i)) {
+        if (isDeleted(pagina->data + i))
+        {
             i += tamTupla(campos, objeto);
             continue;
         }
@@ -155,14 +174,16 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
 
         tuplas[indiceTupla].column = (column *)uffslloc(sizeof(column) * objeto.qtdCampos);
         tuplas[indiceTupla].bufferPage = page;
-        for (int ic = 0; ic < objeto.qtdCampos; ic++){
+        for (int ic = 0; ic < objeto.qtdCampos; ic++)
+        {
             column *c = &tuplas[indiceTupla].column[ic];
 
             c->tipoCampo = campos[ic].tipo;
             strcpy(c->nomeCampo, campos[ic].nome); // Guarda nome do campo
             if (nullos[ic])
                 c->valorCampo = COLUNA_NULL;
-            else {
+            else
+            {
                 c->valorCampo = (char *)uffslloc(sizeof(char) * campos[ic].tam + 1);
                 memcpy(c->valorCampo, pagina->data + i, campos[ic].tam);
                 c->valorCampo[campos[ic].tam] = '\0';
@@ -286,6 +307,7 @@ int colocaTuplaBuffer(tp_pagina *pagina, int from, tp_table *campos, struct fs_o
             pagina[i].nrec++;
         }
     }
+    printf("colocaTuplaBuffer\n");
     return found ? SUCCESS : ERRO_BUFFER_CHEIO;
 }
 ////////
@@ -338,6 +360,8 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
 
     fwrite(pagina, sizeof(tp_pagina), 1, dados);
     fclose(dados);
+
+    printf("pagina %d foi escrita no disco\n", pagina->id);
 
     for (int i = 0; i < bp.qtd_paginas_total; i++)
     { // MODIFICADA POR NECESSIDADE

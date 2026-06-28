@@ -776,7 +776,8 @@ void insert(rc_insert *s_insert)
         }
     }
 
-    if (!flag && finalizaInsert(s_insert->objName, colunas, tamTupla(tabela->esquema, objeto)) == SUCCESS) {
+    if (!flag && finalizaInsert(s_insert->objName, colunas, tamTupla(tabela->esquema, objeto)) == SUCCESS)
+    {
         printf("INSERT 0 1\n");
         bm_printHeaderBufferPool();
     }
@@ -1028,15 +1029,19 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
             {
                 if (&bp.paginas[i] == pagina)
                 {
-                    bp.header[i].db = 0;
+                    // bp.header[i].db = 0;//isso é errado, pq não necessariamente a págian deixou de ser modificada
+                    // bp.header[i].db = 1;
+                    // bp.header[i].pc = 0; //isso é errado, pois ele tem que permanecer o valor
                     bp.header[i].pc = 0;
+
                     break;
                 }
             }
-            writeBufferToDisk(pagina, &objeto);
+            // writeBufferToDisk(pagina, &objeto);
 
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
+        // aqui realmente ocorre a exclusão
         pagina->data[t->offset] = 1; // marca a tupla como deletada
         // TEMOS QUE AJUSTAR:
         // buffer->db = 1; //marca a página como modificada
@@ -1044,7 +1049,8 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
         {
             if (&bp.paginas[i] == pagina)
             { // compara os endereços
-                bp.header[i].db = 1;
+                bp.header[i].pc = 0;
+
                 break;
             }
         }
@@ -1054,8 +1060,18 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
 
     // write the last buffer
     if (pagina != NULL)
-    {
-    writeBufferToDisk(pagina, &objeto);
+    { // se sobrou alguma página carregada na memória no final do laço, ele força a gravação dela no disco para garantir que a última exclusão seja salva
+        for (int i = 0; i < bp.qtd_paginas_total; i++)
+        {
+            if (&bp.paginas[i] == pagina)
+            { // compara os endereços
+                bp.header[i].db = 1;
+                bp.header[i].pc = 0;
+
+                break;
+            }
+        }
+        // writeBufferToDisk(pagina, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
     bm_printHeaderBufferPool();
