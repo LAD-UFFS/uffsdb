@@ -1030,7 +1030,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
                     break;
                 }
             }
-                writeBufferToDisk(pagina, &objeto);
+            writeBufferToDisk(pagina, &objeto);
 
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
