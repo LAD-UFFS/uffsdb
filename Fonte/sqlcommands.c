@@ -1030,7 +1030,8 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
                     break;
                 }
             }
-            writeBufferToDisk(pagina, &objeto);
+                writeBufferToDisk(pagina, &objeto);
+
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
         pagina->data[t->offset] = 1; // marca a tupla como deletada
@@ -1051,7 +1052,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
     // write the last buffer
     if (pagina != NULL)
     {
-        writeBufferToDisk(pagina, &objeto);
+    writeBufferToDisk(pagina, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
 }
@@ -1605,7 +1606,7 @@ int excluirTabela(char *nomeTabela)
             strcat(directory, dat);
             if ((f = fopen(directory, "r")) != NULL)
             {
-                remove(directory);
+                remove(directory); // disco
                 fclose(f);
             }
             objeto.qtdIndice--;
@@ -1623,7 +1624,7 @@ int excluirTabela(char *nomeTabela)
     }
     strcpy(directory, connected.db_directory);
     strcat(directory, str);
-    remove(directory);
+    remove(directory); // disco
 
     printf("DROP TABLE\n");
     return SUCCESS;
