@@ -51,15 +51,25 @@ typedef struct table{ // Estrutura utilizada para criar uma tabela.
     tp_table *esquema;              // Esquema de campos da tabela.
 }table;
 
-typedef struct tp_buffer{ // Estrutura utilizada para armazenar o buffer.
+typedef struct tp_page{ // Estrutura utilizada para armazenar o buffer.
     unsigned int id;        // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
     unsigned int nrec;       //Número de registros armazenados na página.
     uint32_t position;   // Número da quantidade de registro que a página ainda pode receber;
-    // TODO: Separar a struct o que precisar ser persistida e o que fica na memória
+    char data[SIZE];         // Dados
+}tp_page;
+
+typedef struct tp_bufferpage {
+    struct tp_page *page;
     unsigned char db;        //Dirty bit
     unsigned char pc;        //Pin counter
-    char data[SIZE];         // Dados
-}tp_buffer;
+    struct tp_bufferpage *next;     // Próxima página da mesma tabela na lista encadeada (ordenada por page_id)
+} tp_bufferpage;
+
+typedef struct bufferheader {
+    char table_name[TAMANHO_NOME_TABELA];   // Nome da tabela à qual essa lista de páginas pertence
+    struct tp_bufferpage *table_list_head;         // Cabeça da lista encadeada (ordenada por page_id) das páginas dessa tabela no buffer
+    struct bufferheader *next;              // Próxima tabela presente no buffer
+} bufferheader;
 
 typedef struct rc_insert {
     char    *objName;           // Nome do objeto (tabela, banco de dados, etc...)
