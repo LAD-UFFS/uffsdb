@@ -170,6 +170,8 @@ typedef struct um_slot_do_header_do_buffer_pool {
     int bloco_da_tabela; // qual bloco da tabela "id_tabela" está neste slot
     unsigned char db; //Dirty bit
     unsigned char pc; //Pin counter
+    char filename[LEN_DB_NAME_IO]; // pois sem o filename não tem como descorbrir o fs_objects da tabela pelo bp (buffer pool)
+                                   // precisamos guardar o caminho do arquivo pra saber onde gravar quando quando o bloco sair do buffer pool e ir para o disco
 } um_slot_do_header_do_buffer_pool;
 
 typedef struct tp_pagina{ // Estrutura utilizada para armazenar cada página.

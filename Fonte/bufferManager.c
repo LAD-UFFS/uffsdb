@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef FMACROS
     #include "macros.h"
@@ -19,7 +20,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
 
     // vendo se o bloco (id_bloco) da tabela (id_tabela) já está no buffer pool:
     for (int i = 0; i < bp.qtd_paginas_total; i++) {
-        if (bp.header[i].id_tabela == id_tabela &&  bp.header[i].bloco_da_tabela == id_bloco) {
+        if (bp.header[i].id_tabela == id_tabela && bp.header[i].bloco_da_tabela == id_bloco) {
             printf("bm_getBlock: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
             return &bp.paginas[i]; // página já está no buffer
         }
@@ -53,6 +54,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename) {
     bp.header[indice_disponivel].bloco_da_tabela = id_bloco;
     bp.header[indice_disponivel].db = 0;
     bp.header[indice_disponivel].pc = 1;
+    strcpy(bp.header[indice_disponivel].filename, filename);
     bp.qtd_paginas_ocupadas++;
     bp.qtd_paginas_desocupadas--;
 
@@ -81,4 +83,53 @@ void bm_printHeaderBufferPool()
         printf("%d          %d          %d        %d       %d\n", i, bp.header[i].id_tabela, bp.header[i].bloco_da_tabela, bp.header[i].db, bp.header[i].pc);
     }
     printf("---------------------------------\n");
+}
+
+
+
+// criando uma página nova diretamente no pool (antes, quando era criada uma nova página, ela era alocada em um lugar qualquer da memória e logo escrita no disco, mas agora colocamos ela no buffer e somente no buffer quando ela é criada)
+// só é usada na operação de INSERT, quando é o primeiro bloco da tabela ou quando o bloco atual está cheio e precisamos criar um novo bloco (que agora é criado diretamente no buffer e sem ser escrito no disco imediatamente: por um tempo, a página fica só no buffer sem estar no disco)
+tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename) {
+    
+    // procurando um slot livre no buffer pool:
+    int indice_disponivel = -1;
+    for (int i = 0; i < bp.qtd_paginas_total; i++) {
+        if (bp.header[i].id_tabela == -1) {
+            indice_disponivel = i;
+            break;
+        }
+    }
+
+    if (indice_disponivel == -1) {
+        printf("ERROR: buffer pool cheio\n");
+        exit(1);
+    }
+
+    // inicializando a página:
+    bp.paginas[indice_disponivel].id = (unsigned int)id_bloco;
+    bp.paginas[indice_disponivel].nrec = 0;
+    bp.paginas[indice_disponivel].position = 0;
+
+    // atualizando o header:
+    bp.header[indice_disponivel].id_tabela = id_tabela;
+    bp.header[indice_disponivel].bloco_da_tabela = id_bloco;
+    bp.header[indice_disponivel].db = 1; // db=1 desde o início porque ela precisa ser gravada no disco quando o programa terminar ou quando ela for substituída, visto que ela não é mais gravada no disco logo depois da criação
+    bp.header[indice_disponivel].pc = 1;
+    strcpy(bp.header[indice_disponivel].filename, filename);
+    bp.qtd_paginas_ocupadas++;
+    bp.qtd_paginas_desocupadas--;
+
+    printf("bm_novaPaginaNoBuffer: novo bloco (bloco %d) da tabela %d está sendo criado no buffer pool no slot %d\n", id_bloco, id_tabela, indice_disponivel);
+
+    return &bp.paginas[indice_disponivel];
+}
+
+// criei uma função para colocar o dirty bit da página como 1, pois colocar no meio do código estava poluindo muito o código
+void bm_marcarDirtyBit(tp_pagina *pagina) {
+    for (int i = 0; i < bp.qtd_paginas_total; i++) {
+        if (&bp.paginas[i] == pagina) { // compara os endereços
+            bp.header[i].db = 1;
+            break;
+        }
+    }
 }

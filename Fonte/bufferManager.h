@@ -15,3 +15,8 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename);
 
 // imprime o header do buffer
 void bm_printHeaderBufferPool();
+
+// cria uma página nova diretamente no buffer, com db=1
+tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename);
+
+void bm_marcarDirtyBit(tp_pagina *pagina);
