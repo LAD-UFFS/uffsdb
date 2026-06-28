@@ -17,7 +17,7 @@
 static int isDeleted(char *linha);
 
 //// imprime os dados no buffer (deprecated?)
-int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, int num_page){
+int printbufferpoll(tp_page *buffpoll, tp_table *s,struct fs_objects objeto, int num_page){
 
     int aux, i, num_reg = objeto.qtdCampos;
 
@@ -34,8 +34,8 @@ int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, i
     return SUCCESS;
 }
 
-tp_buffer* initBuffer(unsigned int id){
-    tp_buffer *buffer = uffslloc(sizeof(tp_buffer));
+tp_page* initBuffer(unsigned int id){
+    tp_page *buffer = uffslloc(sizeof(tp_page));
 
     if (buffer == NULL) {
         printf("ERROR: Memory allocation failed.\n\n");
@@ -46,7 +46,7 @@ tp_buffer* initBuffer(unsigned int id){
     return buffer;
 }
 
-tp_buffer *getBlock(unsigned int id, char* filename){
+tp_page *getBlock(unsigned int id, char* filename){
     // TODO: change how the file is handled; repeatedly opening and closing it is inefficient (não é top)
     FILE *fd = fopen(filename, "r+");
     
@@ -55,10 +55,10 @@ tp_buffer *getBlock(unsigned int id, char* filename){
         return NULL;
     }
 
-    long int pos = (long int)id * sizeof(tp_buffer);
+    long int pos = (long int)id * sizeof(tp_page);
     fseek(fd, pos, SEEK_SET);
-    tp_buffer* buffer = uffslloc(sizeof(tp_buffer));
-    fread(buffer, sizeof(tp_buffer), 1, fd);
+    tp_page* buffer = uffslloc(sizeof(tp_page));
+    fread(buffer, sizeof(tp_page), 1, fd);
     return buffer;
 }
 
@@ -72,7 +72,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto.nArquivo);
 
-    tp_buffer *buffer = getBlock((unsigned int) page, directory);
+    tp_page *buffer = getBlock((unsigned int) page, directory);
 
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (buffer->nrec)); //Aloca a quantidade de tuplas necessária
 
@@ -125,7 +125,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
 }
 
 // EXCLUIR TUPLA BUFFER
-column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla){
+column * excluirTuplaBuffer(tp_page *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla){
     column *tuplas = (column *)uffslloc(sizeof(column)*objeto.qtdCampos);
 
     if(tuplas == NULL)
@@ -192,13 +192,13 @@ char *getTupla(tp_table *campos,struct fs_objects objeto, int from){ //Pega uma 
     return linha;
 }
 /////
-void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos) { //Coloca uma tupla de tamanho "tam" no buffer e na página "pos"
+void setTupla(tp_page *buffer,char *tupla, int tam, int pos) { //Coloca uma tupla de tamanho "tam" no buffer e na página "pos"
   int i = buffer[pos].position;
   for (; i < buffer[pos].position + tam; i++)
     buffer[pos].data[i] = *(tupla++);
 }
 //// insere uma tupla no buffer
-int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto){//Define a página que será incluida uma nova tupla
+int colocaTuplaBuffer(tp_page *buffer, int from, tp_table *campos, struct fs_objects objeto){//Define a página que será incluida uma nova tupla
     int i, found;
     char *tupla = getTupla(campos, objeto, from);
     if(tupla == ERRO_DE_LEITURA)  return ERRO_LEITURA_DADOS;
@@ -235,10 +235,10 @@ void cria_campo(int tam, int header, char *val, int x) {
 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
-    Parametros: Buffer (tp_buffer), dados da tabela (fs_objects), número de blocos e offset do bloco.
+    Parametros: Buffer (tp_page), dados da tabela (fs_objects), número de blocos e offset do bloco.
     Retorno:    1 para sucesso, 0 para falha.
    ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
+int writeBufferToDisk(tp_page *buffer, struct fs_objects *objeto) {
     int success = 1; // flag de sucesso porque sucesso deveria valer 1 não 0!
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -255,10 +255,10 @@ int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
         return 0;
     }
     
-    fseek(dados, buffer->id *sizeof(tp_buffer), SEEK_SET);
-    buffer->db = 0;
-    buffer->pc = 0;
-    fwrite(buffer, sizeof(tp_buffer), 1, dados);
+    fseek(dados, buffer->id *sizeof(tp_page), SEEK_SET);
+    // buffer->db = 0;
+    // buffer->pc = 0;
+    fwrite(buffer, sizeof(tp_page), 1, dados);
     fclose(dados);
 
     return success;

@@ -5,7 +5,7 @@
 #endif
 
 int cabecalho(tp_table *, int );
-int drawline(tp_buffer *, tp_table *, struct fs_objects, int , int);
+int drawline(tp_page *, tp_table *, struct fs_objects, int , int);
 void help();
 void implement();
 void contr();
