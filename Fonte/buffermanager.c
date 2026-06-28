@@ -27,34 +27,34 @@ static int isDeleted(char *linha){
     return linha[0];
 }
 
-bufferheader *findBufferHeader(char* table_name) {
+bufferheader *findBufferHeader(char table_name[]) {
     bufferheader *aux = head;
+
     if (head == NULL) { // if there are no tables in the buffer already
-        // create new head
-        head = (bufferheader *)uffslloc(sizeof(bufferheader));
+        head = (bufferheader *)uffsllocType(sizeof(bufferheader), PERMANENT);
         head->next = NULL;
+        head->table_list_head = NULL;
         strcpy(head->table_name, table_name);
-
+        head->table_name[TAMANHO_NOME_ARQUIVO + 1] = '\0';
         return head;
-    } else {    //search through the bufferheaders to find the bufferheader from the table
-        do {
-            if (strcmp(aux->table_name, table_name) == 0) { //Table header from table found
-                return aux;
-            } else { 
-                aux = aux->next;
-            }
-        } while(aux->next != NULL);
-        if (strcmp(aux->table_name, table_name) == 0) { //Table header from table found (in the last element of the linked list)
+    }
+    // search through the bufferheaders to find the bufferheader for the table
+    bufferheader *prev = NULL;
+    while (aux != NULL) {
+        if (strcmp(aux->table_name, table_name) == 0) {
             return aux;
-        } else {    //Table header doesn't exist, so create a new one at the end of the linked list
-            bufferheader *bh = (bufferheader *)uffslloc(sizeof(bufferheader));
-            bh->next = NULL;
-            strcpy(bh->table_name, table_name);
-            aux->next = bh;
-
-            return bh;
         }
-    }   
+        prev = aux;
+        aux = aux->next;
+    }
+
+    // Not found: create a new header at the end of the list
+    bufferheader *bh = (bufferheader *)uffsllocType(sizeof(bufferheader), PERMANENT);
+    bh->next = NULL;
+    bh->table_list_head = NULL;
+    strcpy(bh->table_name, table_name);
+    prev->next = bh;
+    return bh;
 }
 
 tp_page *readBufferBlock(unsigned int id, struct fs_objects *table, int *error_value) {
@@ -79,10 +79,11 @@ tp_page *readBufferBlock(unsigned int id, struct fs_objects *table, int *error_v
 
             long int pos = (long int)id * sizeof(tp_page);
             fseek(fd, pos, SEEK_SET);
-            tp_page* p = uffslloc(sizeof(tp_page));
+            tp_page* p = (tp_page *)uffsllocType(sizeof(tp_page), PERMANENT);
             fread(p, sizeof(tp_page), 1, fd);
 
             int new_bp_index = PAGES - available_pages;
+            DEBUG_PRINT("Adicionando %dª página ao buffer", new_bp_index);
             available_pages--;
 
             // These are kinda useless, as there isn't a way to change pages in the buffer and the buffer is a write-through buffer
@@ -93,7 +94,6 @@ tp_page *readBufferBlock(unsigned int id, struct fs_objects *table, int *error_v
             bufferPool[new_bp_index].page = p;
 
             bh->table_list_head = &bufferPool[new_bp_index];
-
             return p;
         } else {
             printf("\nERROR: buffer has no more pages available\n");
@@ -125,10 +125,11 @@ tp_page *readBufferBlock(unsigned int id, struct fs_objects *table, int *error_v
 
             long int pos = (long int)id * sizeof(tp_page);
             fseek(fd, pos, SEEK_SET);
-            tp_page* p = uffslloc(sizeof(tp_page));
+            tp_page* p = (tp_page *)uffsllocType(sizeof(tp_page), PERMANENT);
             fread(p, sizeof(tp_page), 1, fd);
 
             int new_bp_index = PAGES - available_pages;
+            DEBUG_PRINT("Adicionando %dª página ao buffer", new_bp_index);
             available_pages--;
 
             // These are kinda useless, as there isn't a way to change pages in the buffer and the buffer is a write-through buffer
