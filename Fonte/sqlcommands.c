@@ -776,8 +776,10 @@ void insert(rc_insert *s_insert)
         }
     }
 
-    if (!flag && finalizaInsert(s_insert->objName, colunas, tamTupla(tabela->esquema, objeto)) == SUCCESS)
+    if (!flag && finalizaInsert(s_insert->objName, colunas, tamTupla(tabela->esquema, objeto)) == SUCCESS) {
         printf("INSERT 0 1\n");
+        bm_printHeaderBufferPool();
+    }
 
     // freeTp_table(&esquema, objeto.qtdCampos);
     freeColumn(colunas);
@@ -948,6 +950,7 @@ void printConsulta(Lista *proj, Lista *result)
         printf("\n");
     }
     printf("\n %d Linha%s.\n", result->tam, result->tam == 1 ? "" : "s");
+    bm_printHeaderBufferPool();
 }
 
 void adcResultado(Lista *resultado, tupla *tuple, int *indiceProj, int qtdColunasProj)
@@ -1055,6 +1058,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
     writeBufferToDisk(pagina, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
+    bm_printHeaderBufferPool();
 }
 
 int afterTrigger(Lista *resultado, inf_query *query)
@@ -1332,6 +1336,7 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
     writeBufferToDisk(pagina, &objeto);
 
     printf("UPDATED %d %s\n", countUpdateTuples, (countUpdateTuples != 1) ? "rows" : "row");
+    bm_printHeaderBufferPool();
 }
 
 Lista *handleTableOperation(inf_query *query, char tipo)

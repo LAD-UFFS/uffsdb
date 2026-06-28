@@ -13,6 +13,7 @@
 
 #include "misc.h"
 #include "dictionary.h"
+#include "bufferManager.h"
 
 static int isDeleted(char *linha);
 
@@ -115,17 +116,18 @@ tp_pagina *getBlock(unsigned int id, char *filename)
 }
 
 // RETORNA PAGINA DO BUFFER
-PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
-{
+PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
 
-    if (page >= PAGES || page < 0)
-        return ERRO_PAGINA_INVALIDA;
+    if(page >= PAGES || page < 0) return ERRO_PAGINA_INVALIDA;
+
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto.nArquivo);
 
-    tp_pagina *pagina = getBlock((unsigned int)page, directory);
+    // tp_pagina *pagina = getBlock((unsigned int)page, directory);
+    tp_pagina *pagina = bm_getBlock(objeto.cod, page, directory);
+    printf("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
 
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (pagina->nrec)); // Aloca a quantidade de tuplas necessária
 
@@ -137,13 +139,11 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     if (!pagina->position)
         return NULL;
 
-    char *nullos = (char *)uffslloc(objeto.qtdCampos * sizeof(char));
+    char *nullos =(char *)uffslloc(objeto.qtdCampos * sizeof(char));
 
-    while (i < pagina->position)
-    {
+    while (i < pagina->position){
 
-        if (isDeleted(pagina->data + i))
-        {
+        if (isDeleted(pagina->data + i)) {
             i += tamTupla(campos, objeto);
             continue;
         }
@@ -155,16 +155,14 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
 
         tuplas[indiceTupla].column = (column *)uffslloc(sizeof(column) * objeto.qtdCampos);
         tuplas[indiceTupla].bufferPage = page;
-        for (int ic = 0; ic < objeto.qtdCampos; ic++)
-        {
+        for (int ic = 0; ic < objeto.qtdCampos; ic++){
             column *c = &tuplas[indiceTupla].column[ic];
 
             c->tipoCampo = campos[ic].tipo;
             strcpy(c->nomeCampo, campos[ic].nome); // Guarda nome do campo
             if (nullos[ic])
                 c->valorCampo = COLUNA_NULL;
-            else
-            {
+            else {
                 c->valorCampo = (char *)uffslloc(sizeof(char) * campos[ic].tam + 1);
                 memcpy(c->valorCampo, pagina->data + i, campos[ic].tam);
                 c->valorCampo[campos[ic].tam] = '\0';
@@ -178,7 +176,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     pg->tuplas = tuplas;
     pg->nrec = indiceTupla;
 
-    printf("getpage\n");
+    printf("getPage: bloco %d da tabela '%s' tem %d tupla(s)\n", page, objeto.nome, indiceTupla);
 
     return pg; // Retorna a 'page' do buffer
 }

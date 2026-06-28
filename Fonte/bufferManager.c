@@ -29,7 +29,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     {
         if (bp.header[i].id_tabela == id_tabela && bp.header[i].bloco_da_tabela == id_bloco)
         {
-            printf("bufferManager: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
+            printf("bm_getBlock: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
             return &bp.paginas[i]; // página já está no buffer
         }
     }
@@ -57,7 +57,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
         // exit(1);
     }
 
-    printf("bufferManager: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco\n", id_bloco, id_tabela, filename);
+    printf("bm_getBlock: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco\n", id_bloco, id_tabela, filename);
     tp_pagina *bloco = getBlock((unsigned int)id_bloco, filename);
 
     // copiando o conteúdo do bloco para o slot livre que achamos do buffer pool (copiando o conteúdo mesmo (por isso "*bloco")
