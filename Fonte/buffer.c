@@ -218,6 +218,7 @@ column *excluirTuplaBuffer(tp_pagina *pagina, tp_table *campos, struct fs_object
 
     pagina[page].position -= tamTpl;
     pagina[page].nrec--;
+    printf("excluirtuplas\n");
 
     return tuplas; // Retorna a tupla excluida do pagina
 }
@@ -334,23 +335,25 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
 
     // seek(dados, pagina->id *sizeof(tp_pagina), SEEK_SET);
     fseek(dados, pagina->id * sizeof(tp_pagina), SEEK_SET);
-    // // TEMOS QUE AJUSTAR:
-    // pagina->db = 0;
-    // pagina->pc = 0;
-    // fazendo o que está acima:
-    // descobrindo o índice da página no buffer pra atualizar o pc e o db do slot no header:
-    for (int i = 0; i < bp.qtd_paginas_total; i++)
-    {
-        if (&bp.paginas[i] == pagina)
-        { // compara os endereços
-            bp.header[i].db = 0;
-            bp.header[i].pc = 0;
-            break;
-        }
-    }
 
     fwrite(pagina, sizeof(tp_pagina), 1, dados);
     fclose(dados);
+
+    for (int i = 0; i < bp.qtd_paginas_total; i++)
+    { // MODIFICADA POR NECESSIDADE
+
+        if (&bp.paginas[i] == pagina)
+        {                                // compara os endereços
+                                         // antes era feita a procura do db e pc, mas isso é feito em bm_writeBufferToDisk, então agora é necessário resturar a página
+            bp.header[i].id_tabela = -1; // -1 = slot livre
+            bp.header[i].bloco_da_tabela = -1;
+            bp.header[i].db = 0;
+            bp.header[i].pc = 0;
+            bp.qtd_paginas_desocupadas++;
+            bp.qtd_paginas_ocupadas--;
+            break;
+        }
+    } // acredito quue ERROR: relation "data/uffsdb/x.dat" was not found. apareça por causa desse for
 
     return success;
 }

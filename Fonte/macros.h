@@ -1,11 +1,11 @@
-#define BLOCK_SIZE  16384  //limite em bytes do tamanho do blocos
-#define FMACROS 0 // flag para identificar se macros.h já foi incluída
+#define BLOCK_SIZE 16384 // limite em bytes do tamanho do blocos
+#define FMACROS 0        // flag para identificar se macros.h já foi incluída
 // TRATAMENTO DE ERROS
 // ERROS inteiros
 #define SUCCESS 0
 #define ERRO_NO_TIPO_INTEIRO -1
 #define ERRO_NO_TAMANHO_STRING -2
-#define	ERRO_NOME_CAMPO -3
+#define ERRO_NOME_CAMPO -3
 #define ERRO_NOME_TABELA -4
 #define ERRO_DE_PARAMETRO -5
 #define ERRO_ABRIR_ARQUIVO -6
@@ -38,22 +38,22 @@
 #define ERRO_PAGINA_INVALIDA NULL
 #define ERRO_DE_LEITURA NULL
 #define ERRO_PARAMETRO NULL
-#define TUPLA_DELETADA ((char *) -1)
-#define COLUNA_NULL ((char *) -2)
+#define TUPLA_DELETADA ((char *)-1)
+#define COLUNA_NULL ((char *)-2)
 
-//tratamento PK e FK
+// tratamento PK e FK
 #define NPK 0
 #define PK 1
 #define FK 2
 #define BT 3
 ////
-#define SIZE 1024                // Tamanho da página.
-#define PAGES 256              // Número de páginas.
-#define TAMANHO_NOME_CAMPO 40   // Tamanho do nome dos campos de uma tabela.
+#define SIZE 1024                  // Tamanho da página.
+#define PAGES 256                  // Número de páginas.
+#define TAMANHO_NOME_CAMPO 40      // Tamanho do nome dos campos de uma tabela.
 #define TAMANHO_NOME_CONSTRAINT 40 // Tamanho do nome da constraint.
-#define TAMANHO_NOME_TABELA 20  // Tamanho do nome da tabela.
-#define TAMANHO_NOME_ARQUIVO 20 // Tamanho do nome do arquivo.
-#define TAMANHO_NOME_INDICE 40  // Tamanho do nome do arquivo de indice.
+#define TAMANHO_NOME_TABELA 20     // Tamanho do nome da tabela.
+#define TAMANHO_NOME_ARQUIVO 20    // Tamanho do nome do arquivo.
+#define TAMANHO_NOME_INDICE 40     // Tamanho do nome do arquivo de indice.
 #define QTD_DB 100
 #define LEN_DB_NAME 20
 #define LEN_DB_NAME_IO (LEN_DB_NAME << 1)
@@ -62,13 +62,16 @@
 
 #define MEMORY_CONTEXT_SIZE 16384 // 16 KB
 
-
 // Debugging macros
 #ifdef DEBUG
-    #define DEBUG_PRINT(fmt, ...) \
-        do { fprintf(stdout, "[DEBUG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#define DEBUG_PRINT(fmt, ...)                                \
+    do                                                       \
+    {                                                        \
+        fprintf(stdout, "[DEBUG] " fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 #else
-    #define DEBUG_PRINT(fmt, ...) \
-        do { } while (0)
+#define DEBUG_PRINT(fmt, ...) \
+    do                        \
+    {                         \
+    } while (0)
 #endif
-
