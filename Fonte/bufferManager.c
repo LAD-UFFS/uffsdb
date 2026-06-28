@@ -147,6 +147,7 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename) {
 
     if (indice_disponivel == -1) {
         printf("ERROR: buffer pool cheio\n");
+        bm_gravarTodasAsPaginasDoBufferNoDisco(); // como aqui tem exit também, precisamos gravar todas as páginas sujas no disco antes de dar exit, senão perdemos os dados que estão só no buffer
         exit(1);
     }
 
@@ -177,4 +178,38 @@ void bm_marcarDirtyBit(tp_pagina *pagina) {
             break;
         }
     }
+}
+
+
+// grava no disco todas as páginas com db=1 no exit, quando o programa terminar
+void bm_gravarTodasAsPaginasDoBufferNoDisco() {
+
+    printf("\nbm_gravarTodasAsPaginasDoBufferNoDisco: como o programa terminou, gravando páginas sujas no disco...\n");
+    
+    for (int i = 0; i < bp.qtd_paginas_total; i++) {
+
+        if (bp.header[i].id_tabela == -1 || bp.header[i].db == 0){
+            continue; // se o slot estiver livre ou a página não tiver sido modificada, pula
+        }
+
+        // me baseei no finalizaInsert pra gravar no disco as páginas do buffer:
+            // ele FAZ primeiro fopen(directory, "r+b") // isso ele continua fazendo (temos que remover isso de finalizaInsert? Acho que sim, né, porque ele não devia fazer fopen sem passar pelo buffer manager, só temos que ver como fazer isso e as implicações)
+            // depois FAZIA fseek(dados, buffer->id * sizeof(tp_pagina), SEEK_SET) // isso já comentei (ele não faz mais) -> então tô fazendo isso aqui, porque é aqui que vamos gravar no disco as páginas
+            // depois ele FAZIA fwrite(buffer, sizeof(tp_pagina), 1, dados) // isso ele também não faz mais (eu comentei onde ele fazia isso) -> então tô fazendo isso aqui também pelo mesmo motivo
+        FILE *arquivo_inteiro_tabela = fopen(bp.header[i].filename, "r+b");
+        if (!arquivo_inteiro_tabela) {
+            printf("ERRO: bm_gravarTodasAsPaginasDoBufferNoDisco: não foi possível abrir o arquivo %s\n", bp.header[i].filename);
+            continue;
+        }
+        fseek(arquivo_inteiro_tabela, (long)bp.paginas[i].id * sizeof(tp_pagina), SEEK_SET);
+        fwrite(&bp.paginas[i], sizeof(tp_pagina), 1, arquivo_inteiro_tabela);
+        fclose(arquivo_inteiro_tabela);
+
+        printf("bm_gravarTodasAsPaginasDoBufferNoDisco: bloco %d da tabela com id/código %d gravado no arquivo %s\n", bp.header[i].bloco_da_tabela, bp.header[i].id_tabela, bp.header[i].filename);
+        
+        // será que tem quer zerar por completo o buffer também? Aqui que não, né? Porque é uma variável e ela é automaticamente excluida quando o programa termina
+        bp.header[i].db = 0; // fazendo isso só por lógica, mas nem precisa eu acho // colocando o dirty bit como 0, porque agora a página foi colocada no disco, ou seja, a página que está no buffer agora está igual ao bloco que está no disco
+        
+    }
+    printf("bm_gravarTodasAsPaginasDoBufferNoDisco: todas as páginas com dirty bit igual a 1 foram gravadas no disco\n");
 }
