@@ -1292,25 +1292,24 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
     strcat(directory, objeto.nArquivo);
 
     for (Nodo *temp = toUpdateTuples->prim; temp; temp = temp->prox)
-    {
+    { // percorre todas as tuplas que satisfazem o WHERE
         tupla *t = (tupla *)temp->inf;
-        if (!pagina)
+        if (!pagina) // se pagina ainda for NULL (ou seja, se for a primeira tupla do loop), busca o bloco da tupla no buffer
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
-        else if (pagina->id != t->bufferPage)
-        {
-            writeBufferToDisk(pagina, &objeto);
+        else if (pagina->id != t->bufferPage) { // se a tupla atual não estiver na página da tupla anterior, tem que carregar o bloco/página da tupla atual
+            // writeBufferToDisk(pagina, &objeto); // aqui, quando trocava de página, era chamado writeBufferToDisk pra gravar a página antiga diretamente no disco => mas agora não queremos mais isso // e daí pra dizer pro buffer manager que a página antiga foi modificada e precisa ser gravada no disco em algum momento, chamei bm_marcarDirtyBit lá no final // ou seja: agora é mais simples: quando uma página é modificada, é só marcar o dirty bit dela como 1
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
 
         int offsetVal = 0;
         for (size_t i = 0; i < t->ncols; i++)
-        {
+        { // percorre todas as colunas da tupla atual
             column col = t->column[i];
             Nodo *valNode = query->values->prim;
             size_t tamanho = retornaTamanhoValorCampo(col.nomeCampo, tabela);
 
             for (Nodo *j = query->proj->prim; j; j = j->prox)
-            {
+            { // percorre as colunas do SET
                 // TODO: optimize the offset calculation
                 if (strcmp((char *)j->inf, col.nomeCampo) == 0)
                 {
@@ -1337,24 +1336,14 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
                 }
                 valNode = valNode->prox;
             }
-            // TEMOS QUE AJUSTAR:
-            // buffer[t->bufferPage].db = 1; // marca a página como modificada
-            // ajustando:
-            for (int i = 0; i < bp.qtd_paginas_total; i++)
-            {
-                if (&bp.paginas[i] == pagina)
-                { // compara os endereços
-                    bp.header[i].db = 1;
-                    break;
-                }
-            }
+            bm_marcarDirtyBit(pagina); // poderia ser fora desse for, né?
             offsetVal += tamanho;
         }
 
         countUpdateTuples++;
     }
 
-    writeBufferToDisk(pagina, &objeto);
+    // writeBufferToDisk(pagina, &objeto); // gravava a última página // mas como já estamos marcando db=1 pra todas as páginas das tuplas lá em cima, podemos só apagar aqui
 
     printf("UPDATED %d %s\n", countUpdateTuples, (countUpdateTuples != 1) ? "rows" : "row");
     bm_printHeaderBufferPool();
