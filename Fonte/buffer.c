@@ -128,7 +128,12 @@ tp_pagina *getBlock(unsigned int id, char *filename)
     fseek(fd, pos, SEEK_SET);                        // pula pra posição do bloco id
     tp_pagina *pagina = uffslloc(sizeof(tp_pagina));
     fread(pagina, sizeof(tp_pagina), 1, fd); // lê os bytes do disco
-    return pagina;                           // retorna os bytes do bloco
+    printf("READ: pagina->id=%d nrec=%d position=%d\n",
+           pagina->id,
+           pagina->nrec,
+           pagina->position);
+    fclose(fd);    // tem que fechar arquivo (modifiquei)
+    return pagina; // retorna os bytes do bloco
 }
 
 // RETORNA PAGINA DO BUFFER
@@ -145,6 +150,9 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     // tp_pagina *pagina = getBlock((unsigned int)page, directory);
     tp_pagina *pagina = bm_getBlock(objeto.cod, page, directory);
     printf("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
+
+    if (pagina == NULL || pagina == ERRO_PARAMETRO)
+        return ERRO_PARAMETRO;
 
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (pagina->nrec)); // Aloca a quantidade de tuplas necessária
 
@@ -357,6 +365,10 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
 
     // seek(dados, pagina->id *sizeof(tp_pagina), SEEK_SET);
     fseek(dados, pagina->id * sizeof(tp_pagina), SEEK_SET);
+    printf("WRITE: pagina->id=%d nrec=%d position=%d\n",
+           pagina->id,
+           pagina->nrec,
+           pagina->position);
 
     fwrite(pagina, sizeof(tp_pagina), 1, dados);
     fclose(dados);

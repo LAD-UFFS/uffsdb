@@ -20,3 +20,10 @@ void bm_printHeaderBufferPool();
 
 // função para a política de troca de páginas em algoritmo do relógio
 int algoritmo_clock();
+// cria uma página nova diretamente no buffer, com db=1
+tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename);
+
+void bm_marcarDirtyBit(tp_pagina *pagina);
+
+// gravando no disco todas as páginas com db=1 (depois do exit)
+void bm_gravarTodasAsPaginasDoBufferNoDisco();

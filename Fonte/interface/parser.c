@@ -24,6 +24,9 @@
 #ifndef FSQLCOMMANDS
    #include "../sqlcommands.h"
 #endif
+#ifndef FBUFFERMANAGER
+   #include "../bufferManager.h"
+#endif
 #ifndef FPARSER
    #include "parser.h"
 #endif
@@ -61,6 +64,7 @@ void invalidCommand(char *command) {
 
 void quit(int flag){
     write_history("data/history.txt");
+    bm_gravarTodasAsPaginasDoBufferNoDisco(); // vi que era aqui que o programa terminava (tem exit)
     destroyMemoryContext();
     exit(flag);
 };

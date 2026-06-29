@@ -32,6 +32,7 @@ int main()
    dbInit(NULL);
 
    initBufferPool(PAGES);
+   buffer_manager *initBufferManager();
 
    printf("uffsdb (16.2).\nType \"help\" for help or \"implement\" for seeing what is or not is implemented in this project.\n\n");
 

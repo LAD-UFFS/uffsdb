@@ -184,10 +184,12 @@ union c_int
 
 typedef struct um_slot_do_header_do_buffer_pool
 {
-    int id_tabela;       // qual tabela ocupa este slot (-1 = slot livre) // = fs_objects.cod (ou seja: o id/código da tabela)
-    int bloco_da_tabela; // qual bloco da tabela "id_tabela" está neste slot
-    unsigned char db;    // Dirty bit
-    unsigned char pc;    // Pin counter
+    int id_tabela;                 // qual tabela ocupa este slot (-1 = slot livre) // = fs_objects.cod (ou seja: o id/código da tabela)
+    int bloco_da_tabela;           // qual bloco da tabela "id_tabela" está neste slot
+    unsigned char db;              // Dirty bit
+    unsigned char pc;              // Pin counter
+    char filename[LEN_DB_NAME_IO]; // pois sem o filename não tem como descorbrir o fs_objects da tabela pelo bp (buffer pool)
+                                   // precisamos guardar o caminho do arquivo pra saber onde gravar quando quando o bloco sair do buffer pool e ir para o disco
 } um_slot_do_header_do_buffer_pool;
 
 typedef struct tp_pagina

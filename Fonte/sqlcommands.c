@@ -501,8 +501,11 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     tp_pagina *buffer;
     if (objeto.lastBuffer == -1)
     {
-        buffer = initPagina(0);
+        // buffer = initPagina(0); // isso alocava uma página em um lugar qualquer da memória (ou seja, não no buffer pool) e, mais para frente, no fwrite, essa página era gravada no disco
+        // mas como agora a gente tá usando o buffer pool, a gente tem que usar o buffer pool: então ao invés de criarmos uma página em um lugar na memória qualquer e logo em seguida escrever no disco, eu pensei que faria sentido criar a página diretamente no buffer pool e NÃO gravar no disco agora (pois nem faria sentido, pois não é assim que um buffer pool funciona). E daí só gravar no disco futuramente (ou quando houver uma substituição por política de troca ou quando tiver exit). Por isso criei essa nova função (bm_novaPaginaNoBuffer), e tô chamando ela no lugar de initPagina (também é por isso que mais pra frente, ao invés de gravar no disco, eu só marquei o dirty bit da página como 1):
+        buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // criamos o bloco 0 da tabela diretamente no buffer (e não gravamos logo em seguida no disco)
         objeto.lastBuffer = 0;
+
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto);
     }
@@ -514,7 +517,8 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
 
         if (buffer->position + tamTupla >= SIZE)
         {
-            buffer = initPagina(objeto.lastBuffer + 1);
+            // buffer = initPagina(objeto.lastBuffer + 1);
+            buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // se o bloco atual estiver cheio, criamos o novo bloco diretamente no buffer, e passamos o código da tabela, o número do bloco e o diretório do arquivo para criar a página no buffer
             objeto.lastBuffer++;
             updateSchema(&objeto);
         }
@@ -666,8 +670,9 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     memcpy(buffer->data + buffer->position, bufferTuple, tamTupla);
     buffer->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
-    fseek(dados, buffer->id * sizeof(tp_pagina), SEEK_SET);
-    fwrite(buffer, sizeof(tp_pagina), 1, dados);
+    // fseek(dados, buffer->id * sizeof(tp_pagina), SEEK_SET);
+    // fwrite(buffer, sizeof(tp_pagina), 1, dados);
+    bm_marcarDirtyBit(buffer); // ao invés de escrevermos a página no disco, APENAS marcamos a página como MODIFICADA no buffer pool, pois se ela estiver marcada como modificada, se tudo der certo, uma hora hora ela vai pro disco // (criei uma função pois achei que seria mais fácil, já que fazemos isso em vários lugares no código)
     DEBUG_PRINT("INSERT - Block size written in file: %d", sizeof(tp_pagina));
 
     print_tabela_bloco(buffer, auxT, objeto, buffer->id); // para teste

@@ -34,7 +34,7 @@ int cabecalho(tp_table *s, int num_reg)
     return aux;
 }
 ///////
-int drawline(tp_pagina *buffpoll, tp_table *s, struct fs_objects objeto, int p, int num_page)
+int drawline(tp_pagina *pagina, tp_table *s, struct fs_objects objeto, int p, int num_page)
 {
 
     if (num_page > PAGES || p > SIZE)
@@ -71,61 +71,58 @@ int drawline(tp_pagina *buffpoll, tp_table *s, struct fs_objects objeto, int p, 
         pos_aux = *(pos_ini);
         bit_pos = 0;
 
-        if (bp.header[count].db != 1)
+        switch (s[count].tipo)
         {
-            switch (s[count].tipo)
+        case 'S':
+            x = 0;
+            while (pagina->data[pos_aux] != '\0')
             {
-            case 'S':
-                x = 0;
-                while (buffpoll[num_page].data[pos_aux] != '\0')
-                {
 
-                    printf("%c", buffpoll[num_page].data[pos_aux]);
-                    if ((buffpoll[num_page].data[pos_aux++] & 0xc0) != 0x80)
-                        bit_pos++; // Conta apenas bits que possam ser impressos (UTF8)
-                    x++;
-                }
-
-                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', (30 - x));
-                break;
-
-            case 'I':
-                while (pos_aux < *(pos_ini) + s[count].tam)
-                {
-                    ci.cnum[bit_pos++] = buffpoll[num_page].data[pos_aux++];
-                }
-                printf("%d", ci.num); // Controla o número de casas até a centena
-                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', 28);
-                break;
-
-            case 'D':
-                while (pos_aux < *(pos_ini) + s[count].tam)
-                {
-                    cd.double_cnum[bit_pos++] = buffpoll[num_page].data[pos_aux++]; // Cópias os bytes do double para área de memória da union
-                }
-                printf("%.3lf", cd.dnum);
-                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', 24);
-                break;
-
-            case 'C':
-                printf("%c", buffpoll[num_page].data[pos_aux]);
-                if (s[count].tam < strlen(s[count].nome))
-                {
-                    bit_pos = strlen(s[count].nome);
-                }
-                else
-                {
-                    bit_pos = s[count].tam;
-                }
-                cria_campo((bit_pos - 1), 0, (char *)' ', 29);
-                break;
-
-            default:
-                return ERRO_IMPRESSAO;
-                break;
+                printf("%c", pagina->data[pos_aux]);
+                if ((pagina->data[pos_aux++] & 0xc0) != 0x80)
+                    bit_pos++; // Conta apenas bits que possam ser impressos (UTF8)
+                x++;
             }
-            *(pos_ini) += s[count].tam;
+
+            cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', (30 - x));
+            break;
+
+        case 'I':
+            while (pos_aux < *(pos_ini) + s[count].tam)
+            {
+                ci.cnum[bit_pos++] = pagina->data[pos_aux++];
+            }
+            printf("%d", ci.num); // Controla o número de casas até a centena
+            cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', 28);
+            break;
+
+        case 'D':
+            while (pos_aux < *(pos_ini) + s[count].tam)
+            {
+                cd.double_cnum[bit_pos++] = pagina->data[pos_aux++]; // Cópias os bytes do double para área de memória da union
+            }
+            printf("%.3lf", cd.dnum);
+            cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char *)' ', 24);
+            break;
+
+        case 'C':
+            printf("%c", pagina->data[pos_aux]);
+            if (s[count].tam < strlen(s[count].nome))
+            {
+                bit_pos = strlen(s[count].nome);
+            }
+            else
+            {
+                bit_pos = s[count].tam;
+            }
+            cria_campo((bit_pos - 1), 0, (char *)' ', 29);
+            break;
+
+        default:
+            return ERRO_IMPRESSAO;
+            break;
         }
+        *(pos_ini) += s[count].tam;
     }
     printf("\n");
     return SUCCESS;
