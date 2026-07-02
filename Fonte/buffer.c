@@ -3,6 +3,8 @@
 #include <string.h>
 #include "memoryContext.h"
 
+static BufferManager *bufferManager = NULL;
+
 #ifndef FMACROS // garante que macros.h não seja reincluída
    #include "macros.h"
 #endif
@@ -46,20 +48,137 @@ tp_buffer* initBuffer(unsigned int id){
     return buffer;
 }
 
-tp_buffer *getBlock(unsigned int id, char* filename){
-    // TODO: change how the file is handled; repeatedly opening and closing it is inefficient (não é top)
+/* Inicializa o Buffer Manager e aloca o Buffer Pool */
+BufferManager *initBufferManager(void){
+
+    bufferManager = malloc(sizeof(BufferManager));
+
+    if(bufferManager == NULL){
+        printf("ERROR: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    bufferManager->pageSize = SIZE;
+    bufferManager->nextReplacement = 0;
+
+    bufferManager->pool = malloc(sizeof(BufferPool));
+
+    if(bufferManager->pool == NULL){
+        printf("ERROR: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    bufferManager->pool->maxPages = PAGES;
+    bufferManager->pool->loadedPages = 0;
+
+    bufferManager->pool->pages = malloc(sizeof(tp_buffer) * PAGES);
+
+    if(bufferManager->pool->pages == NULL){
+        printf("ERROR: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    for(int i = 0; i < PAGES; i++) {
+        bufferManager->pool->pages[i].id = i;
+        bufferManager->pool->pages[i].isOccupied = 0;
+        bufferManager->pool->pages[i].nrec = 0;
+        bufferManager->pool->pages[i].position = 0;
+        bufferManager->pool->pages[i].db = 0;
+        bufferManager->pool->pages[i].pc = 0;
+
+        memset(bufferManager->pool->pages[i].data, 0, SIZE);
+    }
+
+    return bufferManager;
+
+}
+
+/* Procura uma página no Buffer Pool */
+tp_buffer *findPageInBuffer(unsigned int id, const char *filename){
+
+    if(bufferManager == NULL)
+        return NULL;
+
+    for(int i = 0; i < PAGES; i++){
+
+        if(bufferManager->pool->pages[i].isOccupied &&
+           bufferManager->pool->pages[i].id == id &&
+           strcmp(bufferManager->pool->pages[i].fileName, filename) == 0){
+
+            return &bufferManager->pool->pages[i];
+        }
+    }
+
+    return NULL;
+}
+
+/*  Recupera uma página do Buffer Pool ou do arquivo de dados, caso ela ainda não esteja carregada. */
+tp_buffer *getBlock(unsigned int id, char *filename){
+
+    // Verifica se a página já está carregada no Buffer Pool
+    tp_buffer *pagina = findPageInBuffer(id, filename);
+
+    if(pagina != NULL){
+
+        pagina->pc++;
+        return pagina;
+    }
+
+    // Página não encontrada no Buffer Pool. Carrega do arquivo
     FILE *fd = fopen(filename, "r+");
-    
-    if (!fd) {
-        printf("ERROR: failed to open %s", filename);
+
+    if(fd == NULL){
+        printf("ERROR: failed to open %s\n", filename);
         return NULL;
     }
 
     long int pos = (long int)id * sizeof(tp_buffer);
     fseek(fd, pos, SEEK_SET);
-    tp_buffer* buffer = uffslloc(sizeof(tp_buffer));
-    fread(buffer, sizeof(tp_buffer), 1, fd);
-    return buffer;
+
+    tp_buffer temp;
+
+    if(fread(&temp, sizeof(tp_buffer), 1, fd) != 1){
+        fclose(fd);
+        return NULL;
+    }
+
+    fclose(fd);
+
+    /* Procura uma posição livre no Buffer Pool. */
+    for(int i = 0; i < PAGES; i++){
+
+        if(bufferManager->pool->pages[i].isOccupied == 0){
+
+            bufferManager->pool->pages[i] = temp;
+
+            bufferManager->pool->pages[i].isOccupied = 1;
+            bufferManager->pool->pages[i].id = id;
+            bufferManager->pool->pages[i].pc = 1;
+
+            strcpy(bufferManager->pool->pages[i].fileName, filename);
+
+            bufferManager->pool->loadedPages++;
+
+            return &bufferManager->pool->pages[i];
+        }
+    }
+   
+    /* Substituição de páginas (FIFO). */
+    int slot = bufferManager->nextReplacement;
+
+    bufferManager->pool->pages[slot] = temp;
+
+    bufferManager->pool->pages[slot].isOccupied = 1;
+    bufferManager->pool->pages[slot].id = id;
+    bufferManager->pool->pages[slot].pc = 1;
+
+    strcpy(bufferManager->pool->pages[slot].fileName, filename);
+
+
+    // Atualiza a próxima página que poderá ser substituída
+    bufferManager->nextReplacement = (bufferManager->nextReplacement + 1) % PAGES;
+
+    return &bufferManager->pool->pages[slot];
 }
 
 // RETORNA PAGINA DO BUFFER
@@ -74,17 +193,21 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
 
     tp_buffer *buffer = getBlock((unsigned int) page, directory);
 
+    if(buffer == NULL)
+        return NULL;
+
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (buffer->nrec)); //Aloca a quantidade de tuplas necessária
 
     if(!tuplas)
         return ERRO_DE_ALOCACAO;
 
-    int  indiceTupla=0, i=0;
+    int indiceTupla = 0;
+    int i = 0;
 
     if (!buffer->position)
         return NULL;
 
-    char* nullos =(char *)uffslloc(objeto.qtdCampos * sizeof(char));
+    char *nullos = (char *)uffslloc(objeto.qtdCampos * sizeof(char));
 
     while(i < buffer->position){
         
@@ -106,9 +229,10 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
 
             c->tipoCampo = campos[ic].tipo;
             strcpy(c->nomeCampo, campos[ic].nome); //Guarda nome do campo
-            if(nullos[ic]) c->valorCampo = COLUNA_NULL;
-            else {
-                c->valorCampo = (char *)uffslloc(sizeof(char) * campos[ic].tam + 1);
+            if(nullos[ic]){
+                c->valorCampo = COLUNA_NULL;
+            } else {
+                c->valorCampo = (char *)uffslloc(campos[ic].tam + 1);
                 memcpy(c->valorCampo, buffer->data + i, campos[ic].tam);
                 c->valorCampo[campos[ic].tam] = '\0';
             }
@@ -243,6 +367,11 @@ int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, objeto->nArquivo);
+
+    if(buffer==NULL){
+        printf("ERROR: empty buffer\n");
+        return 0;
+    }
 
     FILE *dados = fopen(directory, "r+b");
     if (!dados) {

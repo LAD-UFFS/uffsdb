@@ -51,15 +51,29 @@ typedef struct table{ // Estrutura utilizada para criar uma tabela.
     tp_table *esquema;              // Esquema de campos da tabela.
 }table;
 
-typedef struct tp_buffer{ // Estrutura utilizada para armazenar o buffer.
-    unsigned int id;        // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
-    unsigned int nrec;       //Número de registros armazenados na página.
-    uint32_t position;   // Número da quantidade de registro que a página ainda pode receber;
+typedef struct tp_buffer{      // Representa uma página de dados armazenada no Buffer Pool.
+    unsigned int id;           // Identificador da página no arquivo de dados.
+    unsigned char isOccupied;  // Indica se o slot do Buffer Pool está ocupado (0 = livre, 1 = ocupado).
+    unsigned int nrec;         // Número de registros armazenados na página.
+    uint32_t position;         // Próxima posição livre para inserção de dados na página.
     // TODO: Separar a struct o que precisar ser persistida e o que fica na memória
-    unsigned char db;        //Dirty bit
-    unsigned char pc;        //Pin counter
-    char data[SIZE];         // Dados
+    unsigned char db;          // Dirty bit
+    unsigned char pc;          // Pin counter
+    char fileName[100];        // Nome do arquivo ao qual a página pertence.
+    char data[SIZE];           // Dados armazenados na página.  
 }tp_buffer;
+
+typedef struct {
+    tp_buffer *pages;    // Vetor de páginas do buffer
+    int maxPages;        // Capacidade máxima de páginas
+    int loadedPages;     // Quantas páginas estão ocupadas
+} BufferPool;
+
+typedef struct {
+    int pageSize;        // Tamanho de cada página
+    int nextReplacement; // Próximo frame a ser substituído (FIFO)
+    BufferPool *pool;    // Ponteiro para o Buffer Pool
+} BufferManager;
 
 typedef struct rc_insert {
     char    *objName;           // Nome do objeto (tabela, banco de dados, etc...)

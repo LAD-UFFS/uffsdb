@@ -46,6 +46,11 @@ tp_buffer * initBuffer(unsigned int id);
     *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
     *page - Número da página a ser recuperada (0 a PAGES)
 */
+
+tp_buffer *findPageInBuffer(unsigned int id, const char *filename);
+
+BufferManager *initBufferManager(void);
+
 PageResult * getPage(tp_table *campos, struct fs_objects objeto, int page);
 /*
     Esta função uma determinada tupla do buffer e retorna a mesma em uma estrutura do tipo column;
@@ -70,6 +75,6 @@ void cria_campo(int , int , char *, int );
     Parametros: Buffer (tp_buffer) e dados da tabela (fs_objects)
     Retorno:    1 para sucesso, 0 para falha.
    ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_buffer *bufferpool, struct fs_objects *objeto);
+int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto);
 
 void addColumn(column **colList, column *c);

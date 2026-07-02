@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "memoryContext.h"
 #include <ctype.h>
+#include <errno.h>
+#include <math.h>
 
 #ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
    #include "btree.h"
@@ -424,6 +426,10 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     tp_buffer *buffer;
     if (objeto.lastBuffer == -1){
         buffer = initBuffer(0);
+
+        buffer->db = 0;
+        buffer->pc = 0;
+
         objeto.lastBuffer = 0;
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto); 
@@ -433,6 +439,9 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
 
         if (buffer->position + tamTupla >= SIZE) {
             buffer = initBuffer(objeto.lastBuffer + 1);
+
+            buffer->db = 0;
+            buffer->pc = 0;
             objeto.lastBuffer++;
             updateSchema(&objeto); 
         }
@@ -523,21 +532,29 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
             DEBUG_PRINT("INSERT - Integer value written in file: %d", valorInteiro);
         }
         else if (auxT[t].tipo == 'D'){ // Grava um dado do tipo double.
-          x = 0;
-          while (x < strlen(auxC->valorCampo)){
-              if((auxC->valorCampo[x] < 48 || auxC->valorCampo[x] > 57) && (auxC->valorCampo[x] != 46) && (auxC->valorCampo[x] != 45)){
-                  printf("ERROR: column \"%s\" expect double.\n", auxC->nomeCampo);
-                  erro = ERRO_NO_TIPO_DOUBLE;
-                  goto fim;
-              }
-              x++;
-          }
-          char *endptr;
-          double valorDouble = strtod(auxC->valorCampo, &endptr);
+        x = 0;
+        while (x < strlen(auxC->valorCampo)){
+            if((auxC->valorCampo[x] < 48 || auxC->valorCampo[x] > 57) && (auxC->valorCampo[x] != 46) && (auxC->valorCampo[x] != 45)){
+                printf("ERROR: column \"%s\" expect double.\n", auxC->nomeCampo);
+                erro = ERRO_NO_TIPO_DOUBLE;
+                goto fim;
+            }
+            x++;
+        }
 
+        errno = 0;
 
-          memcpy(bufferTuple + offsetBuffer, &valorDouble, sizeof(double));
-          offsetBuffer += sizeof(valorDouble);
+        char *endptr;
+        double valorDouble = strtod(auxC->valorCampo, &endptr);
+
+        if (errno == ERANGE || valorDouble == HUGE_VAL || valorDouble == -HUGE_VAL) {
+            printf("ERROR: column \"%s\" double value out of range.\n", auxC->nomeCampo);
+            erro = ERRO_NO_TIPO_DOUBLE;
+            goto fim;
+        }
+
+        memcpy(bufferTuple + offsetBuffer, &valorDouble, sizeof(double));
+        offsetBuffer += sizeof(valorDouble);
         }
         else if (auxT[t].tipo == 'C'){ // Grava um dado do tipo char.
 
@@ -581,6 +598,11 @@ void insert(rc_insert *s_insert) {
 	memset(&objeto, 0, sizeof(struct fs_objects));
 	char  flag=0;
 
+    if (!verificaNomeTabela(s_insert->objName)) {
+        printf("ERROR: table \"%s\" does not exist.\n", s_insert->objName);
+        return;
+    }
+
 	abreTabela(s_insert->objName, &objeto, &tabela->esquema); //retorna o esquema para a insere valor
 	strcpylower(tabela->nome, s_insert->objName);
 
@@ -590,7 +612,13 @@ void insert(rc_insert *s_insert) {
 		if (allColumnsExists(s_insert, tabela)){
 			for (esquema = tabela->esquema; esquema != NULL; esquema = esquema->next){
 				if(typesCompatible(esquema->tipo,getInsertedType(s_insert, esquema->nome, tabela))){
-					colunas = insereValor(tabela, colunas, esquema->nome, getInsertedValue(s_insert, esquema->nome, tabela));
+				    char *valor = getInsertedValue(s_insert, esquema->nome, tabela);
+				    if (esquema->tipo == 'S' && valor != NULL && valor != COLUNA_NULL && (int)strlen(valor) > esquema->tam) {
+				        printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", esquema->nome, esquema->tam, (int)strlen(valor));
+				        flag=1;
+				    } else {
+				        colunas = insereValor(tabela, colunas, esquema->nome, valor);
+				    }
 				}
         else {
 					printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n", esquema->nome, tabela->nome, esquema->tipo, getInsertedType(s_insert, esquema->nome, tabela));
@@ -616,7 +644,12 @@ void insert(rc_insert *s_insert) {
 				}
 
 				if(s_insert->type[i] == tabela->esquema[i].tipo)
-					colunas = insereValor(tabela, colunas, tabela->esquema[i].nome, s_insert->values[i]);
+				    if (tabela->esquema[i].tipo == 'S' && s_insert->values[i] != NULL && s_insert->values[i] != COLUNA_NULL && (int)strlen(s_insert->values[i]) > tabela->esquema[i].tam) {
+				        printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", tabela->esquema[i].nome, tabela->esquema[i].tam, (int)strlen(s_insert->values[i]));
+				        flag=1;
+				    } else {
+				        colunas = insereValor(tabela, colunas, tabela->esquema[i].nome, s_insert->values[i]);
+				    }
 				else {
 					printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n", tabela->esquema[i].nome, tabela->nome, tabela->esquema[i].tipo, s_insert->type[i]);
 					flag=1;
@@ -642,7 +675,7 @@ int validaProj(Lista *proj, tp_table *colunas, int qtdColunas, int *indiceProj){
         rmvNodoPtr(proj, proj->prim);
         proj->prim = proj->ult = NULL;
         for(int j = 0; j < qtdColunas; j++){
-            indiceProj[j] = (char) j;
+            indiceProj[j] = j; //corrigido o (char)
             char *str = uffslloc(sizeof(char) * strlen(colunas[j].nome));
             strcpy(str, colunas[j].nome);
             adcNodo(proj, proj->ult, str);
@@ -1084,7 +1117,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
 
     int *indiceProj = NULL, qtdCamposProj = 0;
     if(tipo == 's') {
-        indiceProj = (int *)uffslloc(sizeof(int) * query->proj->tam);
+        indiceProj = (int *)uffslloc(sizeof(int) * objeto.qtdCampos); //corigido o parametro
         if(!validaProj(query->proj, esquema, objeto.qtdCampos, indiceProj)){
             return NULL;
         }
@@ -1343,12 +1376,14 @@ int verifyFieldName(char **fieldName, int N){
     return 1;
 }
 
-//////
 void createTable(rc_insert *t) {
+    int tupleSize = 0;//  e o acumulador de tuplas 
+   
   if(strlen(t->objName) > TAMANHO_NOME_TABELA){
       printf("A table name must have no more than %d caracteres.\n",TAMANHO_NOME_TABELA);
       return;
   }
+
   int size;
   strcpylower(t->objName, t->objName);        //muda pra minúsculo
   char *tableName = (char*) uffslloc(sizeof(char)*(TAMANHO_NOME_TABELA+10)),
@@ -1371,6 +1406,7 @@ void createTable(rc_insert *t) {
   int i;
   int PKcount = 0;
   for(i = 0; i < t->N; i++){
+
     if(t->type[i] == 'S') {
   		size = atoi(t->values[i]);
       if(size <= 0) {
@@ -1378,6 +1414,13 @@ void createTable(rc_insert *t) {
         freeTable(tab);
         return;
       }
+
+if(size > BLOCK_SIZE) {
+printf("ERROR: invalid size for column \"%s\": VARCHAR size exceeds memory limit\n", t->columnName[i]);
+freeTable(tab);
+return;
+} 
+
     }
   	else if(t->type[i] == 'I')
   		size = sizeof(int);
@@ -1385,6 +1428,13 @@ void createTable(rc_insert *t) {
   		size = sizeof(double);
     else if(t->type[i] == 'C')
   		size = sizeof(char);
+
+    tupleSize += size; // valor do size
+    if(tupleSize > BLOCK_SIZE ) { // validação para não exceder o limite da tupla
+        printf("ERROR: invalid size %d, size exceeds memory limit of %d\n",tupleSize,BLOCK_SIZE);
+        freeTable(tab);
+        return;
+    }    
 
     if(t->attribute[i] == PK) {
         PKcount++;
@@ -1404,6 +1454,9 @@ void createTable(rc_insert *t) {
   		strcpy(fkTable, "");
   		strcpy(fkColumn, "");
   	}
+
+
+    
     tab = adicionaCampo(tab, t->columnName[i], t->type[i], size, t->attribute[i], fkTable, fkColumn, codFK);
     if((objcmp(fkTable, "") != 0) || (objcmp(fkColumn, "") != 0)){
       if(verifyFK(fkTable, fkColumn) == 0){
@@ -1434,6 +1487,7 @@ void createTable(rc_insert *t) {
 
   if(tab != NULL) freeTable(tab);
 }
+
 
 void createIndex(rc_insert *t) {
   struct fs_objects obj;

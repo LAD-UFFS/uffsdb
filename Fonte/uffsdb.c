@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "buffer.h"
 #ifndef FMACROS
    #include "macros.h"
 #endif
@@ -27,6 +28,8 @@ db_connected connected;
 
 int main(){
     dbInit(NULL);
+
+    initBufferManager();
     
     printf("uffsdb (16.2).\nType \"help\" for help or \"implement\" for seeing what is or not is implemented in this project.\n\n");
     
