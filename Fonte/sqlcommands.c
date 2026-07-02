@@ -505,12 +505,20 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
         // mas como agora a gente tá usando o buffer pool, a gente tem que usar o buffer pool: então ao invés de criarmos uma página em um lugar na memória qualquer e logo em seguida escrever no disco, eu pensei que faria sentido criar a página diretamente no buffer pool e NÃO gravar no disco agora (pois nem faria sentido, pois não é assim que um buffer pool funciona). E daí só gravar no disco futuramente (ou quando houver uma substituição por política de troca ou quando tiver exit). Por isso criei essa nova função (bm_novaPaginaNoBuffer), e tô chamando ela no lugar de initPagina (também é por isso que mais pra frente, ao invés de gravar no disco, eu só marquei o dirty bit da página como 1):
         buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // criamos o bloco 0 da tabela diretamente no buffer (e não gravamos logo em seguida no disco)
         objeto.lastBuffer = 0;
+        /*printf("BM_NOVAPAGINA FORA DO IF\n");
+
+        printf("buffer = %p\n", (void *)buffer);
+
+        printf("id=%u\n", buffer->id);
+        printf("nrec=%u\n", buffer->nrec);
+        printf("position=%u\n", buffer->position);*/
 
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto);
     }
     else
     {
+
         buffer = bm_getBlock(objeto.cod, objeto.lastBuffer, directory);
         if (buffer == NULL)
             return ERRO_ABRIR_ARQUIVO;
@@ -519,8 +527,17 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
         {
             // buffer = initPagina(objeto.lastBuffer + 1);
             buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // se o bloco atual estiver cheio, criamos o novo bloco diretamente no buffer, e passamos o código da tabela, o número do bloco e o diretório do arquivo para criar a página no buffer
+
             objeto.lastBuffer++;
             updateSchema(&objeto);
+
+            /*printf("BM_NOVAPAGINA NO IF\n");
+
+            printf("buffer = %p\n", (void *)buffer);
+
+            printf("id=%u\n", buffer->id);
+            printf("nrec=%u\n", buffer->nrec);
+            printf("position=%u\n", buffer->position);*/
         }
     }
 
@@ -674,6 +691,14 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     // fwrite(buffer, sizeof(tp_pagina), 1, dados);
     bm_marcarDirtyBit(buffer); // ao invés de escrevermos a página no disco, APENAS marcamos a página como MODIFICADA no buffer pool, pois se ela estiver marcada como modificada, se tudo der certo, uma hora hora ela vai pro disco // (criei uma função pois achei que seria mais fácil, já que fazemos isso em vários lugares no código)
     DEBUG_PRINT("INSERT - Block size written in file: %d", sizeof(tp_pagina));
+
+    /*printf("DEPOIS DO INSERT\n");
+
+    printf("buffer = %p\n", (void *)buffer);
+
+    printf("id=%u\n", buffer->id);
+    printf("nrec=%u\n", buffer->nrec);
+    printf("position=%u\n", buffer->position);*/
 
     print_tabela_bloco(buffer, auxT, objeto, buffer->id); // para teste
 
@@ -1296,7 +1321,8 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
         tupla *t = (tupla *)temp->inf;
         if (!pagina) // se pagina ainda for NULL (ou seja, se for a primeira tupla do loop), busca o bloco da tupla no buffer
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
-        else if (pagina->id != t->bufferPage) { // se a tupla atual não estiver na página da tupla anterior, tem que carregar o bloco/página da tupla atual
+        else if (pagina->id != t->bufferPage)
+        { // se a tupla atual não estiver na página da tupla anterior, tem que carregar o bloco/página da tupla atual
             // writeBufferToDisk(pagina, &objeto); // aqui, quando trocava de página, era chamado writeBufferToDisk pra gravar a página antiga diretamente no disco => mas agora não queremos mais isso // e daí pra dizer pro buffer manager que a página antiga foi modificada e precisa ser gravada no disco em algum momento, chamei bm_marcarDirtyBit lá no final // ou seja: agora é mais simples: quando uma página é modificada, é só marcar o dirty bit dela como 1
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
         }
@@ -1385,9 +1411,15 @@ Lista *handleTableOperation(inf_query *query, char tipo)
     int k;
     PageResult *pagina;
     Lista *resultado = novaLista(NULL);
+    // for (int p = 0; p <= objeto.lastBuffer; p++)
     for (int p = 0; p <= objeto.lastBuffer; p++)
     {
+        /// soltei print a torto e a direito pra entender o que estava acontecendo para o select travar e descobri que era num getPage por causa de um if mas até me tocar disso demorei umas 2 horas
+        // printf("handletabel: SELECT tentando abrir bloco %d de %d\n", p, objeto.lastBuffer);
+
         pagina = getPage(esquema, objeto, p);
+        // printf("handletabel: retorno=%p\n", pagina);
+
         if (pagina == ERRO_PARAMETRO)
         {
             printf("ERROR: could not open the table.\n");

@@ -8,7 +8,7 @@
 #include "types.h"
 #endif
 
-tp_pagina *bm_writeBufferToDisk(struct fs_objects *objeto);
+tp_pagina *bm_writeBufferToDisk();
 
 // verifica se o bloco id_bloco da tabela id_tabela já tá no buffer
 // - se sim, retorna um ponteiro pra ele

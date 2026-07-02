@@ -30,6 +30,13 @@ int print_tabela_bloco(tp_pagina *pagina, tp_table *s, struct fs_objects objeto,
     }
 
     i = aux = 0;
+    /*printf("DENTRO DE PRINT_TABELA_BLOC\n");
+    printf("BM_NOVAPAGINA NO IF\n");
+    printf("print_tabela_bloco: pagina = %p\n", (void *)pagina);
+    printf("id=%d\n", pagina->id);
+    printf("nrec=%d\n", pagina->nrec);
+    printf("position=%d\n", pagina->position);*/
+
     printf("-------- Impressao da tabela %d de nome %s \n", objeto.cod, objeto.nome);
 
     aux = cabecalho(s, num_reg);
@@ -37,8 +44,12 @@ int print_tabela_bloco(tp_pagina *pagina, tp_table *s, struct fs_objects objeto,
     while (i < pagina->nrec)
     { // Enquanto i < numero de registros * tamanho de uma instancia da tabela
 
+        // printf("ANTES drawline i=%d\n", i);
+
         drawline(pagina, s, objeto, i, num_page);
         i++;
+
+        // printf("DEPOIS drawline i=%d\n", i);
     }
     return SUCCESS;
 }
@@ -128,10 +139,7 @@ tp_pagina *getBlock(unsigned int id, char *filename)
     fseek(fd, pos, SEEK_SET);                        // pula pra posição do bloco id
     tp_pagina *pagina = uffslloc(sizeof(tp_pagina));
     fread(pagina, sizeof(tp_pagina), 1, fd); // lê os bytes do disco
-    printf("READ: pagina->id=%d nrec=%d position=%d\n",
-           pagina->id,
-           pagina->nrec,
-           pagina->position);
+    // printf("READ: pagina->id=%d nrec=%d position=%d\n", pagina->id, pagina->nrec, pagina->position);
     fclose(fd);    // tem que fechar arquivo (modifiquei)
     return pagina; // retorna os bytes do bloco
 }
@@ -139,9 +147,9 @@ tp_pagina *getBlock(unsigned int id, char *filename)
 // RETORNA PAGINA DO BUFFER
 PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
 {
+    // printf("getpage: page=%d PAGES=%d\n", page, PAGES);
 
-    if (page >= PAGES || page < 0)
-        return ERRO_PAGINA_INVALIDA;
+    // if (page >= PAGES || page < 0) return ERRO_PAGINA_INVALIDA;//isso aqui me fez raiva, fazia com que, após a troca de páginas para inserção de um novo bloco na página, a tabela (se fosse uma tabela em todas as páginas) não fosse impressa após a troca de página. Claro, pq num_page é o p em handleTable... e quando tem troca de páginas ele aumenta, mas é no sentido de saber a qtd de trocas (se num_page é 4 e PAGES é 3, sei que houve 1 troca de páginas)
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -365,17 +373,14 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
 
     // seek(dados, pagina->id *sizeof(tp_pagina), SEEK_SET);
     fseek(dados, pagina->id * sizeof(tp_pagina), SEEK_SET);
-    printf("WRITE: pagina->id=%d nrec=%d position=%d\n",
-           pagina->id,
-           pagina->nrec,
-           pagina->position);
+    // printf("WRITE: pagina->id=%d nrec=%d position=%d\n", pagina->id,pagina->nrec,pagina->position);
 
     fwrite(pagina, sizeof(tp_pagina), 1, dados);
     fclose(dados);
 
     printf("pagina %d foi escrita no disco\n", pagina->id);
 
-    for (int i = 0; i < bp.qtd_paginas_total; i++)
+    /*for (int i = 0; i < bp.qtd_paginas_total; i++)
     { // MODIFICADA POR NECESSIDADE
 
         if (&bp.paginas[i] == pagina)
@@ -389,7 +394,8 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
             bp.qtd_paginas_ocupadas--;
             break;
         }
-    } // acredito quue ERROR: relation "data/uffsdb/x.dat" was not found. apareça por causa desse for
+    }*/
+    // acredito quue ERROR: relation "data/uffsdb/x.dat" was not found. apareça por causa desse for
 
     return success;
 }

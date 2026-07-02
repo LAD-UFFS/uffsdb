@@ -37,10 +37,12 @@ int cabecalho(tp_table *s, int num_reg)
 int drawline(tp_pagina *pagina, tp_table *s, struct fs_objects objeto, int p, int num_page)
 {
 
-    if (num_page > PAGES || p > SIZE)
+    // printf("drawline: num_page=%d p=%d\n", num_page, p);
+    /*if (num_page > PAGES || p > SIZE)
     {
         return ERRO_DE_PARAMETRO;
-    }
+    }*/
+   ///isso fazia com que a página deixasse de ser impressa e como num_page pode ser maior que PAGES, pois pode ser inserido pela 2º vez naquela página um bloco pq foi feita a troca de páginas, então num_page vai ser maior que PAGES
 
     // ao fazer a inserção de uma tupla, o sistema faz  char *bufferTuple = (char *)uffslloc(tamTupla);  e bufferTuple[0] = 0; isso significa que a tupla é válida (quando a tupla é inválida o valor é 1). Depois bufferTuple[offsetNull++] recebe 0 se a coluna étem algum valor e 1 se a coluna for NULL e faz isso para cada coluna
     //  int *pos_ini, aux = (p * tamTuplaSemByteControle(s, objeto)), num_reg = objeto.qtdCampos;
@@ -62,6 +64,9 @@ int drawline(tp_pagina *pagina, tp_table *s, struct fs_objects objeto, int p, in
     // num_reg = 2
     // aux = 2 * 17B = 34 B (endereço da tupla da vez - 2 foi numero exemplo da posição)
     // aux += 1 + 2 = 37B (endereço do dado da primeira coluna da tupla da vez)
+
+    // printf("DRAWLINE bloco=%d tupla=%d\n", pagina->id, p);
+    // printf("drawline: pagina = %p\n", (void *)pagina);
 
     // o nome das colunas é impresso em cria_campo
     count = pos_aux = bit_pos = 0;

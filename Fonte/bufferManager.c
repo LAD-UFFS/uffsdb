@@ -55,9 +55,12 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     {
         // printf("ERROR: buffer pool cheio\n");
         printf("BUFFER POOL CHEIO\n");
-        struct fs_objects objeto_temporario = leObjetoById(id_tabela); // é melhor eu transformar aqui do que em bm_writeBufferToDisk, pq depois pra passar nas outras funções por parametro é mais caótico
+        // struct fs_objects objeto_temporario = leObjetoById(id_tabela); // é melhor eu transformar aqui do que em bm_writeBufferToDisk, pq depois pra passar nas outras funções por parametro é mais caótico
         // bm_writeBufferToDisk(&objeto_temporario);
-        if (bm_writeBufferToDisk(&objeto_temporario) == 0) // verificar
+        // if (bm_writeBufferToDisk(&objeto_temporario, id_bloco) == 0) // verificar
+        //    return NULL;
+
+        if (bm_writeBufferToDisk() == NULL)
             return NULL;
 
         indice_disponivel = indice_pagina_para_subtituir;
@@ -101,10 +104,12 @@ void bm_printHeaderBufferPool()
 
 // função intermediária do WriteBufferToDisk (ele não pode ser acessado diretamente)
 // função que gerencia a saída de uma página do buffer pool, organizando sua escrita no disco
-tp_pagina *bm_writeBufferToDisk(struct fs_objects *objeto)
+tp_pagina *bm_writeBufferToDisk()
 {
     indice_pagina_para_subtituir = algoritmo_clock();
     bm.pagina = &bp.paginas[indice_pagina_para_subtituir]; // buffer manager aponta para a página que vai sair
+    int id_da_Tabela = bp.header[indice_pagina_para_subtituir].id_tabela;
+    struct fs_objects objeto = leObjetoById(id_da_Tabela);
 
     if (indice_pagina_para_subtituir == -1)
     {
@@ -114,20 +119,36 @@ tp_pagina *bm_writeBufferToDisk(struct fs_objects *objeto)
 
     if (bp.header[indice_pagina_para_subtituir].db == 1 && bp.header[indice_pagina_para_subtituir].pc == 0)
     { // só entra aqui se a página vai ser escrita realmente no disco
-        writeBufferToDisk(bm.pagina, objeto);
+        writeBufferToDisk(bm.pagina, &objeto);
     }
+
+    //   inicializando a página:
+    bp.header[indice_pagina_para_subtituir].pc = 1;
+    // bp.paginas[indice_pagina_para_subtituir].id = (unsigned int)id_bloco;
+    bp.paginas[indice_pagina_para_subtituir].nrec = 0;
+    bp.paginas[indice_pagina_para_subtituir].position = 0;
+
+    // atualizando o header:
+    bp.header[indice_pagina_para_subtituir].id_tabela = -1;
+    bp.header[indice_pagina_para_subtituir].bloco_da_tabela = -1;
+    bp.header[indice_pagina_para_subtituir].db = 0;
+    bp.header[indice_pagina_para_subtituir].pc = 0;
+
+    bp.qtd_paginas_ocupadas--;
+    bp.qtd_paginas_desocupadas++;
 
     return bm.pagina;
 }
 
 int algoritmo_clock()
 { // retorna id do bloco substituido
-    // variável para guardar o valor do índice da página pro return, pq é melhor quando entrar na função já ter um valor pra começar, sem ter que ficar procurando
+  // variável para guardar o valor do índice da página pro return, pq é melhor quando entrar na função já ter um valor pra começar, sem ter que ficar procurando
     int indice_pagina = 0;
 
-    while (pagina_da_vez_para_sair < bp.qtd_paginas_total)
+    while (1)
     {
-        printf("db= %d e pc= %d\n", bp.header[pagina_da_vez_para_sair].db, bp.header[pagina_da_vez_para_sair].pc);
+        // pagina_da_vez_para_sair < bp.qtd_paginas_total
+        // printf("db= %d e pc= %d\n", bp.header[pagina_da_vez_para_sair].db, bp.header[pagina_da_vez_para_sair].pc);
         if (pagina_da_vez_para_sair >= bp.qtd_paginas_total)
         { // se pagina_da_vez_para_sair é maior que a ultima pagina, retorna para 0
             pagina_da_vez_para_sair = 0;
@@ -174,8 +195,8 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
     if (indice_disponivel == -1)
     {
         printf("ERROR: buffer pool cheio\n");
-        struct fs_objects objeto_temporario = leObjetoById(id_tabela); // é melhor eu transformar aqui do que em bm_writeBufferToDisk, pq depois pra passar nas outras funções por parametro é mais caótico
-        if (!bm_writeBufferToDisk(&objeto_temporario))
+        // struct fs_objects objeto_temporario = leObjetoById(id_tabela); // é melhor eu transformar aqui do que em bm_writeBufferToDisk, pq depois pra passar nas outras funções por parametro é mais caótico
+        if (bm_writeBufferToDisk() == NULL)
         {
             return NULL;
         }
@@ -203,6 +224,13 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
     bp.qtd_paginas_desocupadas--;
 
     printf("bm_novaPaginaNoBuffer: novo bloco (bloco %d) da tabela %d está sendo criado no buffer pool no slot %d\n", id_bloco, id_tabela, indice_disponivel);
+
+    /*printf("DENTRO DE BM_NOVAPAGINA\n");
+    printf("slot=%d\n", indice_disponivel);
+    printf("pagina=%p\n", &bp.paginas[indice_disponivel]);
+    printf("id=%d\n", bp.paginas[indice_disponivel].id);
+    printf("nrec=%d\n", bp.paginas[indice_disponivel].nrec);
+    printf("position=%d\n", bp.paginas[indice_disponivel].position);*/
 
     return &bp.paginas[indice_disponivel];
 }
