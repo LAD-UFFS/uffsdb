@@ -106,7 +106,7 @@ int getMaxPrimaryKey(char *nomeTabela) {
     int maiorPK = -1; 
     for (int page = 0; page <= objeto.lastBuffer; page++) {
         int erro;
-        pagina = readBufferPage(esquema, &objeto, page, &erro);
+        pagina = readBufferTuples(esquema, &objeto, page, &erro);
         if (!pagina) continue;
 
         for (int i = 0; i < pagina->nrec; i++) {
@@ -213,7 +213,7 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
 
     for (page = 0; page < PAGES; page++) {
         int erro;
-        pagina = readBufferPage(tabela, &objeto, page, &erro);
+        pagina = readBufferTuples(tabela, &objeto, page, &erro);
         if (!pagina) break;
         /*
         * Pq ele percorre todas as tuplas para verificar ??????
@@ -286,7 +286,7 @@ int verificaChavePK(char *nomeTabela, column *c, char *nomeCampo, char *valorCam
     page = 0;
     for (page = 0; page < PAGES; page++) {
         int erro;
-        pagina = readBufferPage(tabela, &objeto, page, &erro);
+        pagina = readBufferTuples(tabela, &objeto, page, &erro);
         if (!pagina) break;
 
         for(j = 0; j < pagina->nrec; j++){
@@ -430,23 +430,24 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
 
     tp_page *page;
     if (objeto.lastBuffer == -1){
-        page = initBuffer(0);
+        page = initPage(0);
         objeto.lastBuffer = 0;
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto); 
     } else {
         int erro;
-        page = readBufferBlock(objeto.lastBuffer, &dicio, &erro);
+        page = readBufferPage(objeto.lastBuffer, &dicio, &erro);
         if(page == NULL) return erro;
 
         if (page->position + tamTupla >= SIZE) {
-            page = initBuffer(objeto.lastBuffer + 1);
+            page = initPage(objeto.lastBuffer + 1);
             objeto.lastBuffer++;
             updateSchema(&objeto); 
         }
     }
 
     // fputc(0, dados); // flag para tupla não deletada
+    fclose(dados);
 
     char* bufferTuple = (char *)uffslloc(tamTupla);
     bufferTuple[0] = 0;
@@ -510,7 +511,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
             char valorCampo[auxT[t].tam + 1];
             strncpy(valorCampo, auxC->valorCampo, auxT[t].tam);
             //strcat(valorCampo, "\0");
-             valorCampo[auxT[t].tam] = 0;
+            valorCampo[auxT[t].tam] = 0;
             memcpy(bufferTuple + offsetBuffer, valorCampo, auxT[t].tam);
             offsetBuffer += auxT[t].tam;
         }
@@ -519,7 +520,6 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
             while (i < strlen(auxC->valorCampo)){
                 if((auxC->valorCampo[i] < 48 || auxC->valorCampo[i] > 57) && auxC->valorCampo[i] != 45){
                     printf("ERROR: column \"%s\" expectet integer.\n", auxC->nomeCampo);
-                    fclose(dados);
                     return ERRO_NO_TIPO_INTEIRO;
                 }
                 i++;
@@ -574,12 +574,11 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     memcpy(page->data + page->position, bufferTuple, tamTupla);
     page->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
-    fseek(dados, page->id * sizeof(tp_page), SEEK_SET);
-    fwrite(page, sizeof(tp_page), 1, dados);
+    writeBufferToDisk(page, &objeto);
     DEBUG_PRINT("INSERT - Block size written in file: %d",  sizeof(tp_page));
 
     fim: //label para liberar a memória utilizada e fechar o arquivo de dados
-        fclose(dados);
+        // fclose(dados); //Devido à atualização do buffer, esse código nunca é acessado antes de fechar o arquivo
     return erro;
 }
 
@@ -852,17 +851,13 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
     for (Nodo *temp = toDeleteTuples->prim; temp; temp = temp->prox) {
         tupla *t = (tupla *)temp->inf;
         int erro;
-        if(!page ) page = readBufferBlock(t->bufferPage, &objeto, &erro);
+        if(!page ) page = readBufferPage(t->bufferPage, &objeto, &erro);
         else if (page->id != t->bufferPage) {
-        // como as tuplas estão ordenadas fisicamente, isto reduz o IO. Quando o bufferpool tiver implementado, nem precisa
-            // page->db = 0;
-            // page->pc = 0;
             writeBufferToDisk(page, &objeto);
             int erro;
-            page = readBufferBlock(t->bufferPage, &objeto, &erro);
+            page = readBufferPage(t->bufferPage, &objeto, &erro);
         }
         page->data[t->offset] = 1; //marca a tupla como deletada
-        // page->db = 1; //marca a página como modificada
         page->nrec--;
         countDeletedTuples++;
     }
@@ -1049,10 +1044,10 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
     for (Nodo *temp = toUpdateTuples->prim; temp; temp = temp->prox){
         tupla *t = (tupla *)temp->inf;
         int erro;
-        if(!page) page = readBufferBlock(t->bufferPage, &objeto, &erro);
+        if(!page) page = readBufferPage(t->bufferPage, &objeto, &erro);
         else if (page->id != t->bufferPage) {
             writeBufferToDisk(page, &objeto);
-            page = readBufferBlock(t->bufferPage, &objeto, &erro);
+            page = readBufferPage(t->bufferPage, &objeto, &erro);
         }
 
         int offsetVal = 0;
@@ -1082,7 +1077,6 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
                 }
                 valNode = valNode->prox;
             }
-            // page[t->bufferPage].db = 1; // marca a página como modificada
             offsetVal += tamanho;
         }
 
@@ -1126,7 +1120,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     Lista *resultado = novaLista(NULL);
     for(int p = 0; p <= objeto.lastBuffer ; p++) {
         int erro;
-        pagina = readBufferPage(esquema, &objeto, p, &erro);
+        pagina = readBufferTuples(esquema, &objeto, p, &erro);
         if(pagina == ERRO_PARAMETRO){
             printf("ERROR: could not open the table.\n");
             return NULL;
