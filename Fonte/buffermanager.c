@@ -123,11 +123,8 @@ tp_page *readBufferPage(unsigned int id, struct fs_objects *table, int *error_va
 
 /* ----------------------------------------------------------------------------------------------
 
-   Diferença em relação à versão anterior: agora readBufferPage devolve um tp_page* direto
-   (sem o "wrapper" tp_bufferpage) e comunica erros através de error_value, já que agora há 
-   mais de um erro possível. readBufferTuples segue o mesmo padrão, propagando pra
-   cima qualquer erro que vier de dentro do readBufferPage (arquivo não encontrado, buffer
-   cheio, etc.).
+   Le uma pagina do buffer e devolve as tuplas validas organizadas para uso do Banco.
+   Caso a pagina nao esteja no buffer ela é carregada do disco com a funcao readBufferPage
 
    Parametros:
      campos       - esquema da tabela (lista de tp_table, um nó por campo)
