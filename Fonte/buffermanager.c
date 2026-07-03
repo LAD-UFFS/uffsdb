@@ -27,6 +27,14 @@ static int isDeleted(char *linha){
     return linha[0];
 }
 
+//zera o estado do buffer na inicialização do banco.
+void bufferInit() {
+    available_pages = PAGES;
+    memset(bufferPool, 0, sizeof(bufferPool));
+    head = NULL;
+}
+
+
 bufferheader *findBufferHeader(char table_name[]) {
     bufferheader *aux = head;
 
@@ -221,14 +229,40 @@ PageResult *readBufferTuples(tp_table *campos, struct fs_objects *table, int pag
 }
 
 void writeToDisk(tp_page *page, struct fs_objects *table) {
-    /*
-        Confere se a página já está no buffer
-        Se sim, só escreve a página no disco, sem sobrescrever a página do buffer (que já é escrita pelo código que usa a página do buffer)
-        Senão, adiciona a página no buffer e depois escreve no disco
-            Caso o buffer esteja cheio, apenas escreve a página no disco sem mandar um erro
-        
-            ****Deletar estes comentários depois de terminar a implementação****
-    */ 
+    if (page == NULL) {
+        printf("ERROR: writeToDisk received NULL page\n");
+        return;
+    }
+ 
+    int error_value = SUCCESS;
+ 
+    /* Tenta garantir que a página esteja no buffer */
+    tp_page *pool_page = readBufferPage(page->id, table, &error_value);
+ 
+    if (pool_page != NULL && pool_page != page) {
+        /* Página carregada do disco (slot novo, conteúdo desatualizado):
+           copia os dados modificados do chamador para o slot do pool */
+        memcpy(pool_page, page, sizeof(tp_page));
+    }
+    /* Se pool_page == page: o chamador já trabalhou direto no slot do pool,
+       nada a copiar. Se pool_page == NULL: buffer cheio, escrevemos só no disco. */
+ 
+    /* Write-through: persiste imediatamente no disco */
+    char filename[LEN_DB_NAME_IO];
+    strcpy(filename, connected.db_directory);
+    strcat(filename, table->nArquivo);
+ 
+    FILE *fd = fopen(filename, "r+b");
+    if (!fd) {
+        printf("ERROR: writeToDisk failed to open %s\n", filename);
+        return;
+    }
+ 
+    tp_page *to_write = (pool_page != NULL) ? pool_page : page;
+    long int pos = (long int)to_write->id * sizeof(tp_page);
+    fseek(fd, pos, SEEK_SET);
+    fwrite(to_write, sizeof(tp_page), 1, fd);
+    fclose(fd);
 }
 
 tp_page* initPage(unsigned int id){
