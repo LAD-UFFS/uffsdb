@@ -20,6 +20,8 @@
    #include "database.h"
 #endif
 
+#include "buffermanager.h"
+
 #include "interface/y.tab.h"
 
 
@@ -27,6 +29,7 @@ db_connected connected;
 
 int main(){
     dbInit(NULL);
+    bufferInit();
     
     printf("uffsdb (16.2).\nType \"help\" for help or \"implement\" for seeing what is or not is implemented in this project.\n\n");
     

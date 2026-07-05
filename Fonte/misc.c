@@ -13,8 +13,8 @@
   #include "types.h"
 #endif
 
-#ifndef FBUFFER // garante que buffer.h não seja reincluída
-  #include "buffer.h"
+#ifndef FBUFFER // garante que legacybuffer.h não seja reincluída
+  #include "legacybuffer.h"
 #endif
 
 #ifndef FDICTIONARY // the same

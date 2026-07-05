@@ -14,25 +14,16 @@
 #include "misc.h"
 #include "dictionary.h"
 
+/*
+    Funções substituídas pelo buffer manager:
+        getBlock --> readBufferPage
+        getPage --> readBufferTuples
+        writeBufferToDisk --> writeToDisk
+        initBuffer --> initPage
+    Estrutura tp_buffer foi renomeada para tp_page
+*/
+
 static int isDeleted(char *linha);
-
-//// imprime os dados no buffer (deprecated?)
-int printbufferpoll(tp_page *buffpoll, tp_table *s,struct fs_objects objeto, int num_page){
-
-    int aux, i, num_reg = objeto.qtdCampos;
-
-    if(buffpoll[num_page].nrec == 0){
-        return ERRO_IMPRESSAO;
-    }
-
-    i = aux = 0;
-    aux = cabecalho(s, num_reg);
-    while(i < buffpoll[num_page].nrec){ // Enquanto i < numero de registros * tamanho de uma instancia da tabela
-        drawline(buffpoll, s, objeto, i, num_page);
-        i++;
-    }
-    return SUCCESS;
-}
 
 tp_page* initBuffer(unsigned int id){
     tp_page *buffer = uffslloc(sizeof(tp_page));
@@ -122,6 +113,55 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
     pg->nrec = indiceTupla;
 
     return pg; //Retorna a 'page' do buffer
+}
+
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
+    Parametros: Buffer (tp_page), dados da tabela (fs_objects), número de blocos e offset do bloco.
+    Retorno:    1 para sucesso, 0 para falha.
+   ---------------------------------------------------------------------------------------------*/
+int writeBufferToDisk(tp_page *buffer, struct fs_objects *objeto) {
+    int success = 1; // flag de sucesso porque sucesso deveria valer 1 não 0!
+    char directory[LEN_DB_NAME_IO];
+    strcpy(directory, connected.db_directory);
+    strcat(directory, objeto->nArquivo);
+
+    if(buffer==NULL){
+        printf("ERROR: empty buffer\n");
+        return 0;
+    }
+
+    FILE *dados = fopen(directory, "r+b");
+    if (!dados) {
+        printf("ERROR: Unable to open file for writing.\n");
+        return 0;
+    }
+    
+    fseek(dados, buffer->id *sizeof(tp_page), SEEK_SET);
+    // buffer->db = 0;
+    // buffer->pc = 0;
+    fwrite(buffer, sizeof(tp_page), 1, dados);
+    fclose(dados);
+
+    return success;
+}
+
+//// imprime os dados no buffer (deprecated?)
+int printbufferpoll(tp_page *buffpoll, tp_table *s,struct fs_objects objeto, int num_page){
+
+    int aux, i, num_reg = objeto.qtdCampos;
+
+    if(buffpoll[num_page].nrec == 0){
+        return ERRO_IMPRESSAO;
+    }
+
+    i = aux = 0;
+    aux = cabecalho(s, num_reg);
+    while(i < buffpoll[num_page].nrec){ // Enquanto i < numero de registros * tamanho de uma instancia da tabela
+        drawline(buffpoll, s, objeto, i, num_page);
+        i++;
+    }
+    return SUCCESS;
 }
 
 // EXCLUIR TUPLA BUFFER
@@ -231,37 +271,6 @@ void cria_campo(int tam, int header, char *val, int x) {
     return;
   }
   for(i = 0; i < x; i++) printf(" ");
-}
-
-/* ----------------------------------------------------------------------------------------------
-    Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
-    Parametros: Buffer (tp_page), dados da tabela (fs_objects), número de blocos e offset do bloco.
-    Retorno:    1 para sucesso, 0 para falha.
-   ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_page *buffer, struct fs_objects *objeto) {
-    int success = 1; // flag de sucesso porque sucesso deveria valer 1 não 0!
-    char directory[LEN_DB_NAME_IO];
-    strcpy(directory, connected.db_directory);
-    strcat(directory, objeto->nArquivo);
-
-    if(buffer==NULL){
-        printf("ERROR: empty buffer\n");
-        return 0;
-    }
-
-    FILE *dados = fopen(directory, "r+b");
-    if (!dados) {
-        printf("ERROR: Unable to open file for writing.\n");
-        return 0;
-    }
-    
-    fseek(dados, buffer->id *sizeof(tp_page), SEEK_SET);
-    // buffer->db = 0;
-    // buffer->pc = 0;
-    fwrite(buffer, sizeof(tp_page), 1, dados);
-    fclose(dados);
-
-    return success;
 }
 
 static int isDeleted(char *linha){

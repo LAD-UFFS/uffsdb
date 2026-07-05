@@ -23,12 +23,6 @@
   #include "misc.h"
 #endif
 
-#ifndef FBUFFER // garante que buffer.h não seja reincluída
-  #include "buffer.h"
-#endif
-
-#include "buffermanager.h"
-
 #ifndef FDICTIONARY // the same
   #include "dictionary.h"
 #endif
@@ -36,6 +30,9 @@
 #ifndef FEXPRESSAO
   #include "Expressao.h"
 #endif
+
+#include "buffermanager.h"
+
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Recebe o nome de uma tabela e engloba as funções leObjeto() e leSchema().
     Parametros: Nome da Tabela, Objeto da Tabela e tabela.
@@ -107,6 +104,8 @@ int getMaxPrimaryKey(char *nomeTabela) {
     for (int page = 0; page <= objeto.lastBuffer; page++) {
         int erro;
         pagina = readBufferTuples(esquema, &objeto, page, &erro);
+        if(erro != SUCCESS)
+            return erro;
         if (!pagina) continue;
 
         for (int i = 0; i < pagina->nrec; i++) {
@@ -214,6 +213,8 @@ int verificaChaveFK(char *nomeTabela,column *c, char *nomeCampo, char *valorCamp
     for (page = 0; page < PAGES; page++) {
         int erro;
         pagina = readBufferTuples(tabela, &objeto, page, &erro);
+        if(erro != SUCCESS)
+            return erro;
         if (!pagina) break;
         /*
         * Pq ele percorre todas as tuplas para verificar ??????
@@ -287,6 +288,8 @@ int verificaChavePK(char *nomeTabela, column *c, char *nomeCampo, char *valorCam
     for (page = 0; page < PAGES; page++) {
         int erro;
         pagina = readBufferTuples(tabela, &objeto, page, &erro);
+        if(erro != SUCCESS)
+            return erro;
         if (!pagina) break;
 
         for(j = 0; j < pagina->nrec; j++){
@@ -1121,8 +1124,8 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
     for(int p = 0; p <= objeto.lastBuffer ; p++) {
         int erro;
         pagina = readBufferTuples(esquema, &objeto, p, &erro);
-        if(pagina == ERRO_PARAMETRO){
-            printf("ERROR: could not open the table.\n");
+        if(erro != SUCCESS){
+            // printf("ERROR: could not open the table.\n");
             return NULL;
         }
         for(k = 0; k < pagina->nrec; k++){
