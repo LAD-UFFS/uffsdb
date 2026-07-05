@@ -47,7 +47,6 @@ bufferheader *findBufferHeader(char table_name[]) {
         head->next = NULL;
         head->table_list_head = NULL;
         strcpy(head->table_name, table_name);
-        head->table_name[TAMANHO_NOME_ARQUIVO + 1] = '\0';
         return head;
     }
     // percorre os bufferheaders para encontrar o bufferheader da tabela
@@ -102,6 +101,7 @@ tp_page *readBufferPage(unsigned int id, struct fs_objects *table, int *error_va
         tp_page* p = (tp_page *)uffsllocType(sizeof(tp_page), PERMANENT);
         fread(p, sizeof(tp_page), 1, fd);
         /* Concluída a leitura da página do disco */
+        fclose(fd);
 
         /* Adicionando nova página ao buffer */
         int new_bp_index = PAGES - available_pages;
@@ -150,6 +150,7 @@ PageResult *readBufferTuples(tp_table *campos, struct fs_objects *table, int pag
 
     if (page < 0) {
         printf("Erro: página inválida.\n\n");
+        *error_value = ERRO_PAGINA_INVALIDA;
         return NULL;
     }
 
