@@ -23,9 +23,7 @@
    #include "sqlcommands.h"
 #endif
 
-#ifndef FBUFFER // garante que buffer.h não seja reincluída
-   #include "buffer.h"
-#endif
+#include "buffermanager.h"
 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Verificação de existência de um arquivo.
@@ -67,11 +65,17 @@ int existeAtributo(char *nomeTabela, column *c){
     if(iniciaAtributos(&objeto, &tabela, nomeTabela) != SUCCESS)
         return ERRO_DE_PARAMETRO;
 
+    int erro;
+    
     // TODO: PAGINA não é necessária aqui
-    pagina = getPage(tabela, objeto, 0);
+    pagina = readBufferTuples(tabela, &objeto, 0, &erro);
+    if(erro != SUCCESS)
+        return erro;
 
     if(pagina == NULL){
-        pagina = getPage(tabela, objeto, 1);
+        pagina = readBufferTuples(tabela, &objeto, 1, &erro);
+        if(erro != SUCCESS)
+            return erro;
     }
 
     if(pagina != NULL){
