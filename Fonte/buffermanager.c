@@ -27,13 +27,17 @@ static int isDeleted(char *linha){
     return linha[0];
 }
 
-//zera o estado do buffer na inicialização do banco.
+/* ----------------------------------------------------------------------------------------------
+   Inicializa as variáveis do buffer: reseta available_pages, zera o bufferPool e
+   aponta head para NULL. Deve ser chamada uma vez na inicialização do banco.
+   Parametros: nenhum.
+   Retorno: void.
+---------------------------------------------------------------------------------------------- */
 void bufferInit() {
     available_pages = PAGES;
     memset(bufferPool, 0, sizeof(bufferPool));
     head = NULL;
 }
-
 
 bufferheader *findBufferHeader(char table_name[]) {
     bufferheader *aux = head;
@@ -228,51 +232,52 @@ PageResult *readBufferTuples(tp_table *campos, struct fs_objects *table, int pag
     return pg;
 }
 
+/* ----------------------------------------------------------------------------------------------
+   Escreve a página no disco imediatamente (write-through).
+   Parametros: página a ser escrita (tp_page), dados da tabela (fs_objects).
+   Retorno: void.
+---------------------------------------------------------------------------------------------- */
 void writeToDisk(tp_page *page, struct fs_objects *table) {
     if (page == NULL) {
         printf("ERROR: writeToDisk received NULL page\n");
         return;
     }
- 
-    int error_value = SUCCESS;
- 
-    /* Tenta garantir que a página esteja no buffer */
-    tp_page *pool_page = readBufferPage(page->id, table, &error_value);
- 
-    if (pool_page != NULL && pool_page != page) {
-        /* Página carregada do disco (slot novo, conteúdo desatualizado):
-           copia os dados modificados do chamador para o slot do pool */
-        memcpy(pool_page, page, sizeof(tp_page));
-    }
-    /* Se pool_page == page: o chamador já trabalhou direto no slot do pool,
-       nada a copiar. Se pool_page == NULL: buffer cheio, escrevemos só no disco. */
- 
-    /* Write-through: persiste imediatamente no disco */
+
+    /* Write-through: persiste imediatamente no disco.
+       O pool é gerenciado exclusivamente pelo readBufferPage. */
     char filename[LEN_DB_NAME_IO];
     strcpy(filename, connected.db_directory);
     strcat(filename, table->nArquivo);
- 
+
     FILE *fd = fopen(filename, "r+b");
     if (!fd) {
         printf("ERROR: writeToDisk failed to open %s\n", filename);
         return;
     }
- 
-    tp_page *to_write = (pool_page != NULL) ? pool_page : page;
-    long int pos = (long int)to_write->id * sizeof(tp_page);
+
+    long int pos = (long int)page->id * sizeof(tp_page);
     fseek(fd, pos, SEEK_SET);
-    fwrite(to_write, sizeof(tp_page), 1, fd);
+    fwrite(page, sizeof(tp_page), 1, fd);
     fclose(fd);
 }
 
+/* ----------------------------------------------------------------------------------------------
+   Aloca e inicializa uma nova tp_page com o id informado.
+   Usa PERMANENT para que a página sobreviva ao uffsFree entre queries —
+   ela será inserida no bufferPool por readBufferPage na próxima escrita.
+   Parametros: id da página.
+   Retorno: tp_page* inicializada, ou NULL em caso de falha de alocação.
+---------------------------------------------------------------------------------------------- */
 tp_page* initPage(unsigned int id){
-    tp_page *page = uffslloc(sizeof(tp_page));
+    /* PERMANENT: a página precisa sobreviver entre queries até ser descartada do pool */
+    tp_page *page = (tp_page *)uffsllocType(sizeof(tp_page), PERMANENT);
 
     if (page == NULL) {
         printf("ERROR: Memory allocation failed.\n\n");
         return NULL;
     }
 
+    memset(page, 0, sizeof(tp_page));
     page->id = id;
     return page;
 }

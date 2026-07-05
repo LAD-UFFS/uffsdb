@@ -574,7 +574,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     memcpy(page->data + page->position, bufferTuple, tamTupla);
     page->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
-    writeBufferToDisk(page, &objeto);
+    writeToDisk(page, &objeto);
     DEBUG_PRINT("INSERT - Block size written in file: %d",  sizeof(tp_page));
 
     fim: //label para liberar a memória utilizada e fechar o arquivo de dados
@@ -853,7 +853,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
         int erro;
         if(!page ) page = readBufferPage(t->bufferPage, &objeto, &erro);
         else if (page->id != t->bufferPage) {
-            writeBufferToDisk(page, &objeto);
+            writeToDisk(page, &objeto);
             int erro;
             page = readBufferPage(t->bufferPage, &objeto, &erro);
         }
@@ -864,7 +864,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName) {
 
     // write the last page 
     if(page != NULL){
-        writeBufferToDisk(page, &objeto);
+        writeToDisk(page, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
 }
@@ -1046,7 +1046,7 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
         int erro;
         if(!page) page = readBufferPage(t->bufferPage, &objeto, &erro);
         else if (page->id != t->bufferPage) {
-            writeBufferToDisk(page, &objeto);
+            writeToDisk(page, &objeto);
             page = readBufferPage(t->bufferPage, &objeto, &erro);
         }
 
@@ -1083,7 +1083,7 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
         countUpdateTuples++;
     }
 
-    writeBufferToDisk(page, &objeto);
+    writeToDisk(page, &objeto);
 
     printf("UPDATED %d %s\n", countUpdateTuples, (countUpdateTuples != 1) ? "rows" : "row");
 }
