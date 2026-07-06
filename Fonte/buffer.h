@@ -1,4 +1,13 @@
+#ifndef BUFFER_COMPAT_H
+#define BUFFER_COMPAT_H
+
 #define FBUFFER 1 // flag controlar os includes
+
+#include "buffer_manager.h"
+#include "page.h"
+#include "record_manager.h"
+#include "memoryContext.h" 
+
 
 #ifndef FMACROS // garante que macros.h não seja reincluída
    #include "macros.h"
@@ -8,68 +17,44 @@
   #include "types.h"
 #endif
 
-/*
-    Esta função imprime todos os dados carregados numa determinada página do buffer
-    *buffer - Estrutura para armazenar tuplas na memória
-    *s - Estrutura que armazena esquema da tabela para ler os dados do buffer
-    *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
-    *num_page - Número da página a ser impressa
-*/
-int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, int num_page);
-/*
-    Esta função insere uma tupla em uma página do buffer em que haja espaço suficiente.
-    Retorna ERRO_BUFFER_CHEIO caso não haja espeço para a tupla
+#ifndef FMISC // garante que misc.h não seja reincluída
+  #include "misc.h"
+#endif
 
-    *buffer - Estrutura para armazenar tuplas na meméria
-    *from   - Número da tupla a ser posta no buffer. Este número é relativo a ordem de inserção da
-              tupla na tabela em disco.
-    *campos - Estrutura que armazena esquema da tabela para ler os dados do buffer
-    *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
-*/
-int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto);
 
-/*
-    Esta função recebe um arquivo e o id do buffer,
-    retorna o buffer carregado ou erro. toma toma.
-*/
+// Declaração de uma variável global para o BufferManager para que as funções de compatibilidade possam acessá-lo.
+extern BufferManager *global_buffer_manager; // Será inicializado em BM_Init
+
+// utiliza o Record Manager para obter e imprimir as tuplas
+int printbufferpoll(tp_buffer *buffpoll, tp_table *s, struct fs_objects objeto, int num_page);
+
+// inicializa o BufferManager e o BufferPool
+tp_buffer* initBuffer(unsigned int id);
+
+// obtém um tp_buffer do BufferManager
 tp_buffer *getBlock(unsigned int id, char* filename);
 
-/*
-    Retorna um buffer iniciado top top. 
-*/
-tp_buffer * initBuffer(unsigned int id);
+// utiliza o Record Manager para obter as tuplas de uma página
+PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page);
 
-/*
-    Esta função recupera uma página do buffer e retorna a mesma em uma estrutura do tipo tupla
-    A estrutura column possui informações de como manipular os dados
-    *campos - Estrutura que armazena esquema da tabela para ler os dados do buffer
-    *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
-    *page - Número da página a ser recuperada (0 a PAGES)
-*/
-PageResult * getPage(tp_table *campos, struct fs_objects objeto, int page);
-/*
-    Esta função uma determinada tupla do buffer e retorna a mesma em uma estrutura do tipo column;
-    A estrutura column possui informações de como manipular os dados
-    *buffer - Estrutura para armazenar tuplas na meméria
-    *campos - Estrutura que armazena esquema da tabela para ler os dados do buffer
-    *objeto - Estrutura que armazena dados sobre a tabela que está no buffer
-    *page   - Número da página a ser recuperada uma tupla (0 a PAGES)
-    *nTupla - Número da tupla a ser excluida, este número é relativo a página do buffer e não a
-              todos os registros carregados
-*/
-column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla);
-////
-char *getTupla(tp_table *campos,struct fs_objects objeto, int from);
+//utiliza o Record Manager para deletar uma tupla, retorna um ponteiro para a tupla excluída
+column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page_id, int nTupla);
 
-void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos);
-////
-void cria_campo(int , int , char *, int );
+// utiliza o BufferManager e o módulo Page para obter uma tupla
+char *getTupla(tp_table *campos, struct fs_objects objeto, int from);
 
-/* ----------------------------------------------------------------------------------------------
-    Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
-    Parametros: Buffer (tp_buffer) e dados da tabela (fs_objects)
-    Retorno:    1 para sucesso, 0 para falha.
-   ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_buffer *bufferpool, struct fs_objects *objeto);
+// utiliza o módulo Page para escrever uma tupla em um tp_buffer
+void setTupla(tp_buffer *buffer, char *tupla_data, int tam, int pos);
 
-void addColumn(column **colList, column *c);
+// utiliza o Record Manager para inserir uma tupla
+int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto);
+
+// utiliza o BufferManager para descarregar uma página
+int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto);
+
+// Funções auxiliares que podem ter sido definidas em outros headers do UFFSDB
+extern int cabecalho(tp_table *s, int num_reg);
+extern int drawline(tupla *t, tp_table *s, struct fs_objects objeto);
+extern void strcpylower(char *dest, const char *src);
+
+#endif // BUFFER_COMPAT_H

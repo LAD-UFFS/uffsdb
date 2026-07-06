@@ -25,6 +25,7 @@ void* uffsllocType(size_t size, MemoryContextType type) {
             ptr->size = size;
             context->used += sizeof(uffs_mem_header) + size;
             ptr->data[size - 1] = '\0';
+
             return ptr->data;
         }
         context = context->next;
@@ -59,7 +60,9 @@ void uffsFree(MemoryContextType type) {
     if (!root.temporary) return;
     MemoryContext *context = root.temporary;
     uffsFreeRecursive(context->next);
-    memset(context, 0, sizeof(MemoryContext));
+    context->next = NULL;
+    memset(context->memoryPool, 0, MEMORY_CONTEXT_SIZE);
+    context->used = 0;
 }
 
 void uffsFreeRecursive(MemoryContext *context){
