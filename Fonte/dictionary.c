@@ -166,8 +166,8 @@ void updateSchema(struct fs_objects *objeto)
             fwrite(objeto->nArquivo, TAMANHO_NOME_ARQUIVO, 1, dicionario);
             fwrite(&objeto->qtdCampos, sizeof(int), 1, dicionario);
             fwrite(&objeto->qtdIndice, sizeof(int), 1, dicionario);
-            fwrite(&objeto->lastBuffer, sizeof(int16_t), 1, dicionario);
-            // fwrite(&objeto->lastBuffer, sizeof(objeto->lastBuffer), 1, dicionario);
+            fwrite(&objeto->ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
+            // fwrite(&objeto->ultimoBlocoComDados, sizeof(objeto->ultimoBlocoComDados), 1, dicionario);
             break;
         }
         fseek(dicionario, TAMANHO_NOME_ARQUIVO + 10, SEEK_CUR);
@@ -307,7 +307,7 @@ struct fs_objects leObjetoById(int idTabela)
     char *tupla = (char *)uffslloc(sizeof(char) * TAMANHO_NOME_TABELA);
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int cod, qtdCampos, qtdIndice;
-    int16_t lastBuffer;
+    int16_t ultimoBlocoComDados;
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -334,7 +334,7 @@ struct fs_objects leObjetoById(int idTabela)
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario);
         fread(&qtdCampos, sizeof(int), 1, dicionario);
         fread(&qtdIndice, sizeof(int), 1, dicionario);
-        fread(&lastBuffer, sizeof(int16_t), 1, dicionario);
+        fread(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
 
         if (cod == idTabela)
         { // Verifica se o nome dado pelo usuario existe no dicionario de dados.
@@ -342,7 +342,7 @@ struct fs_objects leObjetoById(int idTabela)
             objeto.cod = cod;
             objeto.qtdCampos = qtdCampos;
             objeto.qtdIndice = qtdIndice;
-            objeto.lastBuffer = lastBuffer;
+            objeto.ultimoBlocoComDados = ultimoBlocoComDados;
 
             fclose(dicionario);
             return objeto;
@@ -405,7 +405,7 @@ struct fs_objects leObjeto(char *nomeTabela)
 
             int16_t n;
             fread(&n, 2, 1, dicionario);
-            objeto.lastBuffer = n;
+            objeto.ultimoBlocoComDados = n;
             fclose(dicionario);
             return objeto;
         }
@@ -773,8 +773,8 @@ int finalizaTabela(table *t)
     fwrite(&nomeArquivo, sizeof(nomeArquivo), 1, dicionario);
     fwrite(&qtdCampos, sizeof(qtdCampos), 1, dicionario);
     fwrite(&qtdIndice, sizeof(int), 1, dicionario);
-    int16_t lastBuffer = -1;
-    fwrite(&lastBuffer, sizeof(int16_t), 1, dicionario);
+    int16_t ultimoBlocoComDados = -1;
+    fwrite(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
 
     char directoryDataFile[LEN_DB_NAME_IO];
     strcpy(directoryDataFile, connected.db_directory);
@@ -903,7 +903,7 @@ void printTable(char *tbl)
         char nomeArquivo[TAMANHO_NOME_ARQUIVO];
         int qtdCampos;
         int qtdIndice;
-        int16_t lastBuffer;
+        int16_t ultimoBlocoComDados;
 
         while (1)
         {
@@ -917,7 +917,7 @@ void printTable(char *tbl)
             fread(nomeArquivo, sizeof(char), TAMANHO_NOME_ARQUIVO, dicionario);
             fread(&qtdCampos, sizeof(int), 1, dicionario);
             fread(&qtdIndice, sizeof(int), 1, dicionario);
-            fread(&lastBuffer, sizeof(int16_t), 1, dicionario);
+            fread(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
 
             printf(" %-10s | %-15s | %-10s | %-10s \n", "public", nome, "tuple", connected.db_name);
 

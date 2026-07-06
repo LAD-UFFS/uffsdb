@@ -110,7 +110,7 @@ int getMaxPrimaryKey(char *nomeTabela)
     }
 
     int maiorPK = -1;
-    for (int page = 0; page <= objeto.lastBuffer; page++)
+    for (int page = 0; page <= objeto.ultimoBlocoComDados; page++)
     {
         pagina = getPage(esquema, objeto, page);
         if (!pagina)
@@ -498,37 +498,29 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     }
     long int offset = ftell(dados);
 
-    tp_pagina *buffer;
-    if (objeto.lastBuffer == -1)
+    tp_pagina *pagina;
+    if (objeto.ultimoBlocoComDados == -1)
     {
         // buffer = initPagina(0); // isso alocava uma página em um lugar qualquer da memória (ou seja, não no buffer pool) e, mais para frente, no fwrite, essa página era gravada no disco
         // mas como agora a gente tá usando o buffer pool, a gente tem que usar o buffer pool: então ao invés de criarmos uma página em um lugar na memória qualquer e logo em seguida escrever no disco, eu pensei que faria sentido criar a página diretamente no buffer pool e NÃO gravar no disco agora (pois nem faria sentido, pois não é assim que um buffer pool funciona). E daí só gravar no disco futuramente (ou quando houver uma substituição por política de troca ou quando tiver exit). Por isso criei essa nova função (bm_novaPaginaNoBuffer), e tô chamando ela no lugar de initPagina (também é por isso que mais pra frente, ao invés de gravar no disco, eu só marquei o dirty bit da página como 1):
-        buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // criamos o bloco 0 da tabela diretamente no buffer (e não gravamos logo em seguida no disco)
-        objeto.lastBuffer = 0;
-        /*printf("BM_NOVAPAGINA FORA DO IF\n");
-
-        printf("buffer = %p\n", (void *)buffer);
-
-        printf("id=%u\n", buffer->id);
-        printf("nrec=%u\n", buffer->nrec);
-        printf("position=%u\n", buffer->position);*/
+        pagina = bm_novaPaginaNoBuffer(objeto.cod, objeto.ultimoBlocoComDados + 1, directory); // criamos o bloco 0 da tabela diretamente no buffer (e não gravamos logo em seguida no disco)
+        objeto.ultimoBlocoComDados = 0;
 
         // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
         updateSchema(&objeto);
     }
     else
     {
-
-        buffer = bm_getBlock(objeto.cod, objeto.lastBuffer, directory);
-        if (buffer == NULL)
+        pagina = bm_getBlock(objeto.cod, objeto.ultimoBlocoComDados, directory);
+        if (pagina == NULL)
             return ERRO_ABRIR_ARQUIVO;
 
-        if (buffer->position + tamTupla >= SIZE)
+        if (pagina->position + tamTupla >= SIZE)
         {
-            // buffer = initPagina(objeto.lastBuffer + 1);
-            buffer = bm_novaPaginaNoBuffer(objeto.cod, objeto.lastBuffer + 1, directory); // se o bloco atual estiver cheio, criamos o novo bloco diretamente no buffer, e passamos o código da tabela, o número do bloco e o diretório do arquivo para criar a página no buffer
-
-            objeto.lastBuffer++;
+            bm_despinarPagina(pagina); // a página atual tá cheia e não vai mais ser usada agora
+            // buffer = initPagina(objeto.ultimoBlocoComDados + 1);
+            pagina = bm_novaPaginaNoBuffer(objeto.cod, objeto.ultimoBlocoComDados + 1, directory); // se o bloco atual estiver cheio, criamos o novo bloco diretamente no buffer, e passamos o código da tabela, o número do bloco e o diretório do arquivo para criar a página no buffer
+            objeto.ultimoBlocoComDados++;
             updateSchema(&objeto);
 
             /*printf("BM_NOVAPAGINA NO IF\n");
@@ -683,13 +675,14 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
         }
     }
     erro = SUCCESS;
-    buffer->nrec++;
-    memcpy(buffer->data + buffer->position, bufferTuple, tamTupla);
-    buffer->position += tamTupla;
+    pagina->nrec++;
+    memcpy(pagina->data + pagina->position, bufferTuple, tamTupla);
+    pagina->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
     // fseek(dados, buffer->id * sizeof(tp_pagina), SEEK_SET);
     // fwrite(buffer, sizeof(tp_pagina), 1, dados);
-    bm_marcarDirtyBit(buffer); // ao invés de escrevermos a página no disco, APENAS marcamos a página como MODIFICADA no buffer pool, pois se ela estiver marcada como modificada, se tudo der certo, uma hora hora ela vai pro disco // (criei uma função pois achei que seria mais fácil, já que fazemos isso em vários lugares no código)
+    bm_marcarDirtyBit(pagina); // ao invés de escrevermos a página no disco, APENAS marcamos a página como MODIFICADA no buffer pool, pois se ela estiver marcada como modificada, se tudo der certo, uma hora hora ela vai pro disco // (criei uma função pois achei que seria mais fácil, já que fazemos isso em vários lugares no código)
+    bm_despinarPagina(pagina);
     DEBUG_PRINT("INSERT - Block size written in file: %d", sizeof(tp_pagina));
 
     /*printf("DEPOIS DO INSERT\n");
@@ -700,7 +693,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     printf("nrec=%u\n", buffer->nrec);
     printf("position=%u\n", buffer->position);*/
 
-    print_tabela_bloco(buffer, auxT, objeto, buffer->id); // para teste
+    print_tabela_bloco(pagina, auxT, objeto, pagina->id); // para teste
 
 fim: // label para liberar a memória utilizada e fechar o arquivo de dados
     fclose(dados);
@@ -1053,20 +1046,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
         else if (pagina->id != t->bufferPage)
         {
             // como as tuplas estão ordenadas fisicamente, isto reduz o IO. Quando o bufferpool tiver implementado, nem precisa
-            // buffer->db = 0;
-            // buffer->pc = 0;
-            for (int i = 0; i < bp.qtd_paginas_total; i++)
-            {
-                if (&bp.paginas[i] == pagina)
-                {
-                    // bp.header[i].db = 0;//isso é errado, pq não necessariamente a págian deixou de ser modificada
-                    // bp.header[i].db = 1;
-                    // bp.header[i].pc = 0; //isso é errado, pois ele tem que permanecer o valor
-                    bp.header[i].pc = 0;
-
-                    break;
-                }
-            }
+            bm_despinarPagina(pagina);
             // writeBufferToDisk(pagina, &objeto);
 
             pagina = bm_getBlock(objeto.cod, (int)t->bufferPage, directory);
@@ -1075,15 +1055,7 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
         pagina->data[t->offset] = 1; // marca a tupla como deletada
         // TEMOS QUE AJUSTAR:
         // buffer->db = 1; //marca a página como modificada
-        for (int i = 0; i < bp.qtd_paginas_total; i++)
-        {
-            if (&bp.paginas[i] == pagina)
-            { // compara os endereços
-                bp.header[i].pc = 0;
-
-                break;
-            }
-        }
+        bm_despinarPagina(pagina);
         pagina->nrec--;
         countDeletedTuples++;
     }
@@ -1091,16 +1063,8 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
     // write the last buffer
     if (pagina != NULL)
     { // se sobrou alguma página carregada na memória no final do laço, ele força a gravação dela no disco para garantir que a última exclusão seja salva
-        for (int i = 0; i < bp.qtd_paginas_total; i++)
-        {
-            if (&bp.paginas[i] == pagina)
-            { // compara os endereços
-                bp.header[i].db = 1;
-                bp.header[i].pc = 0;
-
-                break;
-            }
-        }
+        bm_marcarDirtyBit(pagina);
+        bm_despinarPagina(pagina);
         // writeBufferToDisk(pagina, &objeto);
     }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
@@ -1362,9 +1326,12 @@ void op_update(Lista *toUpdateTuples, inf_query *query)
                 }
                 valNode = valNode->prox;
             }
-            bm_marcarDirtyBit(pagina); // poderia ser fora desse for, né?
+            // bm_marcarDirtyBit(pagina); // poderia ser fora desse for, né?
+            // bm_despinarPagina(pagina);
             offsetVal += tamanho;
         }
+        bm_marcarDirtyBit(pagina);
+        bm_despinarPagina(pagina);
 
         countUpdateTuples++;
     }
@@ -1411,8 +1378,7 @@ Lista *handleTableOperation(inf_query *query, char tipo)
     int k;
     PageResult *pagina;
     Lista *resultado = novaLista(NULL);
-    // for (int p = 0; p <= objeto.lastBuffer; p++)
-    for (int p = 0; p <= objeto.lastBuffer; p++)
+    for (int p = 0; p <= objeto.ultimoBlocoComDados; p++)
     {
         /// soltei print a torto e a direito pra entender o que estava acontecendo para o select travar e descobri que era num getPage por causa de um if mas até me tocar disso demorei umas 2 horas
         // printf("handletabel: SELECT tentando abrir bloco %d de %d\n", p, objeto.lastBuffer);

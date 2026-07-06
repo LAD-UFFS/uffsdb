@@ -81,7 +81,6 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     strcpy(bp.header[indice_disponivel].filename, filename);
     bp.qtd_paginas_ocupadas++;
     bp.qtd_paginas_desocupadas--;
-    bp.header[indice_disponivel].pc = 0;
 
     return &bp.paginas[indice_disponivel];
 }
@@ -206,9 +205,7 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
         //   exit(1);
     }
 
-    // id_bloco = bp.paginas[indice_disponivel].id++;
-    //   inicializando a página:
-    bp.header[indice_disponivel].pc = 1;
+    // inicializando a página:
     bp.paginas[indice_disponivel].id = (unsigned int)id_bloco;
     bp.paginas[indice_disponivel].nrec = 0;
     bp.paginas[indice_disponivel].position = 0;
@@ -217,8 +214,7 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
     bp.header[indice_disponivel].id_tabela = id_tabela;
     bp.header[indice_disponivel].bloco_da_tabela = id_bloco;
     bp.header[indice_disponivel].db = 1; // db=1 desde o início porque ela precisa ser gravada no disco quando o programa terminar ou quando ela for substituída, visto que ela não é mais gravada no disco logo depois da criação
-    bp.header[indice_disponivel].pc = 0;
-
+    bp.header[indice_disponivel].pc = 1;
     strcpy(bp.header[indice_disponivel].filename, filename);
     bp.qtd_paginas_ocupadas++;
     bp.qtd_paginas_desocupadas--;
@@ -243,6 +239,16 @@ void bm_marcarDirtyBit(tp_pagina *pagina)
         if (&bp.paginas[i] == pagina)
         { // compara os endereços
             bp.header[i].db = 1;
+            break;
+        }
+    }
+}
+
+// despina a página (pc=0) quando quem pegou ela com bm_getBlock ou bm_novaPaginaNoBuffer termina de usar:
+void bm_despinarPagina(tp_pagina *pagina) {
+    for (int i = 0; i < bp.qtd_paginas_total; i++) {
+        if (&bp.paginas[i] == pagina) { // compara os endereços
+            bp.header[i].pc = 0;
             break;
         }
     }

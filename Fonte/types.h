@@ -15,7 +15,7 @@ struct fs_objects
     char nArquivo[TAMANHO_NOME_ARQUIVO]; // Nome do arquivo onde estão armazenados os dados da tabela.
     int qtdCampos;                       // Quantidade de campos da tabela.
     int qtdIndice;                       // Quantidade de índices da tabela.
-    int16_t lastBuffer;
+    int16_t ultimoBlocoComDados;
 };
 
 typedef struct tp_table

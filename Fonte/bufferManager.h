@@ -25,5 +25,8 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename);
 
 void bm_marcarDirtyBit(tp_pagina *pagina);
 
+// para despinar a página (pc=0):
+void bm_despinarPagina(tp_pagina *pagina);
+
 // gravando no disco todas as páginas com db=1 (depois do exit)
 void bm_gravarTodasAsPaginasDoBufferNoDisco();
