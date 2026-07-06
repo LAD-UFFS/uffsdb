@@ -47,7 +47,7 @@ void initBufferPool(int qtd_paginas);
     *page - Número da página a ser recuperada (0 a PAGES)
 */
 
-buffer_manager *initBufferManager();
+void initBufferManager();
 PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page);
 /*
     Esta função uma determinada tupla do buffer e retorna a mesma em uma estrutura do tipo column;

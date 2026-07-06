@@ -105,20 +105,10 @@ void initBufferPool(int qtd_paginas)
     }
 }
 
-buffer_manager *initBufferManager()
+void initBufferManager()
 {
-    buffer_manager *bm = uffslloc(sizeof(buffer_manager));
-
-    if (bm == NULL)
-    {
-        printf("ERROR: Falha na alocação de memoria do buffer manager\n\n");
-        return NULL;
-    }
-
-    bm->politicaTroca = algoritmo_clock; // sem parentese, que é só pra guardar essa politica, sem executar
-    bm->pagina = NULL;                   // inicia sem apontar pra nenhuma página
-
-    return bm;
+    bm.politicaTroca = algoritmo_clock; // sem parentese, que é só pra guardar essa politica, sem executar
+    bm.pagina = NULL;                   // inicia sem apontar pra nenhuma página
 }
 
 // serve pra todas as operação que precisam trazer um bloco do disco (SELECT, DELETE e UPDATE)
