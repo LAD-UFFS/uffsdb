@@ -26,6 +26,7 @@
 #define ERRO_LEITURA_DADOS_DELETADOS -20
 #define ERRO_INDEX_NULL -21
 #define ERRO_LEITURA_DADOS_ATUALIZADOS -22
+#define INVALID_PAGE_ID -23   // erro 
 
 // ERROS ponteiro
 
@@ -48,6 +49,7 @@
 #define BT 3
 ////
 #define SIZE 1024                // Tamanho da página.
+//#define SIZE 4096 // Tamanho da página/bloco
 #define PAGES 256              // Número de páginas.
 #define TAMANHO_NOME_CAMPO 40   // Tamanho do nome dos campos de uma tabela.
 #define TAMANHO_NOME_CONSTRAINT 40 // Tamanho do nome da constraint.

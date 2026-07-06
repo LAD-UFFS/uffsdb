@@ -1,276 +1,352 @@
+#include "buffer.h"
+#include "buffer_manager.h"
+#include "page.h"
+#include "record_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "memoryContext.h"
+#include <ctype.h>
 
-#ifndef FMACROS // garante que macros.h não seja reincluída
+#ifndef FMACROS
    #include "macros.h"
 #endif
-///
-#ifndef FTYPES // garante que types.h não seja reincluída
+
+#ifndef FTYPES
   #include "types.h"
 #endif
 
-#include "misc.h"
-#include "dictionary.h"
+#ifndef FMISC
+  #include "misc.h"
+#endif
 
-static int isDeleted(char *linha);
+#ifndef FDICTIONARY
+  #include "dictionary.h"
+#endif
 
-//// imprime os dados no buffer (deprecated?)
-int printbufferpoll(tp_buffer *buffpoll, tp_table *s,struct fs_objects objeto, int num_page){
+/* Variável global do BufferManager — único, sem arquivo fixo */
+BufferManager *global_buffer_manager = NULL;
 
-    int aux, i, num_reg = objeto.qtdCampos;
+/* -----------------------------------------------------------------------
+ * initBuffer
+ *
+ * Inicializa o BufferManager global (se ainda não foi feito) e retorna
+ * um frame livre do pool inicializado com zeros para a página `id`.
+ * O código legado em sqlcommands.c usa o ponteiro retornado para escrever
+ * dados diretamente em frame->data; por isso precisamos retornar um frame
+ * real, não NULL.
+ *
+ * O parâmetro `filename` indica o arquivo da tabela que será associado
+ * ao frame. Quando NULL, usa o arquivo padrão "uffsdb.dat" (compatibilidade).
+ * ----------------------------------------------------------------------- */
+tp_buffer* initBuffer(unsigned int id) {
+    /* Inicializa o BM global uma única vez */
+    if (global_buffer_manager == NULL) {
+        global_buffer_manager = BM_Init(16, SIZE);
+        if (global_buffer_manager == NULL) {
+            fprintf(stderr, "ERROR: Failed to initialize global BufferManager.\n");
+            return NULL;
+        }
+    }
 
-    if(buffpoll[num_page].nrec == 0){
+    /*
+     * Retorna um frame livre do pool para que o código legado possa
+     * escrever diretamente em frame->data. O frame é marcado com id=`id`
+     * e filename vazio (será preenchido antes do flush).
+     */
+    tp_buffer* frame = BP_GetFreeFrame(global_buffer_manager->pool);
+    if (frame == NULL) {
+        /* Sem frames livres: usa vítima LRU */
+        frame = BP_SelectVictim(global_buffer_manager->pool);
+        if (frame == NULL) {
+            fprintf(stderr, "ERROR: No available frames in BufferPool.\n");
+            return NULL;
+        }
+        /* Se a vítima estava suja, grava antes de reutilizar */
+        if (frame->db && frame->filename[0] != '\0') {
+            Disk_WritePageByName(frame->filename, frame->id,
+                                  frame, global_buffer_manager->pool->page_size);
+            global_buffer_manager->num_writes++;
+        }
+    }
+
+    /* Inicializa o frame como uma página nova/vazia */
+    frame->id       = id;
+    frame->nrec     = 0;
+    frame->position = 0;
+    frame->db       = 0;
+    frame->pc       = 1; /* pinado */
+    frame->filename[0] = '\0'; /* arquivo será definido antes do flush */
+    memset(frame->data, 0, global_buffer_manager->pool->page_size);
+    BP_UpdateAccess(global_buffer_manager->pool, frame);
+
+    return frame;
+}
+
+/* -----------------------------------------------------------------------
+ * getBlock
+ *
+ * Obtém um frame do pool para a página `id` do arquivo `filename`.
+ * Se a página já estiver no pool (cache hit), retorna o frame existente.
+ * Se não estiver, carrega do disco (ou inicializa com zeros se for nova).
+ * ----------------------------------------------------------------------- */
+tp_buffer* getBlock(unsigned int id, char* filename) {
+    if (global_buffer_manager == NULL) {
+        global_buffer_manager = BM_Init(16, SIZE);
+        if (global_buffer_manager == NULL) {
+            fprintf(stderr, "ERROR: BufferManager not initialized. getBlock()\n");
+            return NULL;
+        }
+    }
+
+    if (filename == NULL || filename[0] == '\0') {
+        fprintf(stderr, "ERROR: getBlock called with NULL/empty filename.\n");
+        return NULL;
+    }
+
+    return BM_GetPage(global_buffer_manager, filename, id);
+}
+
+/* -----------------------------------------------------------------------
+ * getPage
+ *
+ * Obtém as tuplas de uma página específica de uma tabela.
+ * ----------------------------------------------------------------------- */
+PageResult* getPage(tp_table *campos, struct fs_objects objeto, int page) {
+    if (global_buffer_manager == NULL) {
+        global_buffer_manager = BM_Init(16, SIZE);
+        if (global_buffer_manager == NULL) {
+            fprintf(stderr, "ERROR: Failed to initialize BufferManager in getPage()\n");
+            return ERRO_PAGINA_INVALIDA;
+        }
+    }
+
+    /* Monta o caminho completo do arquivo da tabela */
+    char filepath[LEN_DB_NAME_IO * 2];
+    snprintf(filepath, sizeof(filepath), "%s%s", connected.db_directory, objeto.nArquivo);
+
+    tp_buffer* page_buffer = BM_GetPage(global_buffer_manager, filepath, (unsigned int)page);
+    if (page_buffer == NULL) {
+        fprintf(stderr, "ERROR: Failed to get page %d from BufferManager.\n", page);
+        return ERRO_PAGINA_INVALIDA;
+    }
+
+    /*
+     * Se position == 0, pode ser que a página foi recém lida do disco e
+     * o metadado não foi restaurado. Recalcula varrendo os bytes do data.
+     * O formato da tupla é: 1 byte deleção + qtdCampos bytes (bitmap) + campos.
+     */
+    if (page_buffer->position == 0) {
+        int tuple_size = tamTupla(campos, objeto);
+        if (tuple_size > 0) {
+            unsigned int pos = 0;
+            int nrec = 0;
+            while (pos + (unsigned int)tuple_size <= SIZE) {
+                /* Verifica se o byte de deleção é 0 (válido) ou 1 (deletado) */
+                unsigned char del_byte = (unsigned char)page_buffer->data[pos];
+                /* Se o byte é 0 ou 1, é uma tupla válida (não lixo) */
+                /* Verifica se há algum dado não-nulo após o byte de deleção */
+                int has_data = 0;
+                for (int b = 0; b < tuple_size; b++) {
+                    if ((unsigned char)page_buffer->data[pos + b] != 0) {
+                        has_data = 1;
+                        break;
+                    }
+                }
+                if (!has_data) break; /* chegou ao fim dos dados */
+                (void)del_byte;
+                if (del_byte == 0) nrec++; /* conta apenas não-deletadas */
+                pos += (unsigned int)tuple_size;
+            }
+            page_buffer->position = pos;
+            page_buffer->nrec = nrec;
+        }
+    }
+
+    /* Se a página está vazia (sem dados), não há tuplas */
+    if (page_buffer->position == 0) {
+        BM_UnpinPage(global_buffer_manager, filepath, (unsigned int)page);
+        return NULL;
+    }
+
+    PageResult *pr = PAGE_GetTuplasFromFrame(page_buffer, campos, objeto);
+    BM_UnpinPage(global_buffer_manager, filepath, (unsigned int)page);
+    return pr;
+}
+
+/* -----------------------------------------------------------------------
+ * printbufferpoll
+ * ----------------------------------------------------------------------- */
+int printbufferpoll(tp_buffer *buffpoll, tp_table *s, struct fs_objects objeto, int num_page) {
+    if (global_buffer_manager == NULL) {
+        global_buffer_manager = BM_Init(16, SIZE);
+        if (global_buffer_manager == NULL) {
+            fprintf(stderr, "ERROR: Failed to initialize BufferManager in printbufferpoll()\n");
+            return ERRO_IMPRESSAO;
+        }
+    }
+
+    char filepath[LEN_DB_NAME_IO * 2];
+    snprintf(filepath, sizeof(filepath), "%s%s", connected.db_directory, objeto.nArquivo);
+
+    PageResult *all_records = RM_SelectAllRecords(global_buffer_manager, filepath, s, objeto);
+    if (all_records == NULL) {
         return ERRO_IMPRESSAO;
     }
 
-    i = aux = 0;
-    aux = cabecalho(s, num_reg);
-    while(i < buffpoll[num_page].nrec){ // Enquanto i < numero de registros * tamanho de uma instancia da tabela
-        drawline(buffpoll, s, objeto, i, num_page);
-        i++;
-    }
-    return SUCCESS;
+    int result = printbufferpoll_adapted(all_records, s, objeto);
+    return result;
 }
 
-tp_buffer* initBuffer(unsigned int id){
-    tp_buffer *buffer = uffslloc(sizeof(tp_buffer));
-
-    if (buffer == NULL) {
-        printf("ERROR: Memory allocation failed.\n\n");
-        return NULL;
-    }
-
-    buffer->id = id;
-    return buffer;
-}
-
-tp_buffer *getBlock(unsigned int id, char* filename){
-    // TODO: change how the file is handled; repeatedly opening and closing it is inefficient (não é top)
-    FILE *fd = fopen(filename, "r+");
-    
-    if (!fd) {
-        printf("ERROR: failed to open %s", filename);
-        return NULL;
-    }
-
-    long int pos = (long int)id * sizeof(tp_buffer);
-    fseek(fd, pos, SEEK_SET);
-    tp_buffer* buffer = uffslloc(sizeof(tp_buffer));
-    fread(buffer, sizeof(tp_buffer), 1, fd);
-    return buffer;
-}
-
-// RETORNA PAGINA DO BUFFER
-PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page){
-
-    if(page >= PAGES || page < 0) return ERRO_PAGINA_INVALIDA;
-
-    
-    char directory[LEN_DB_NAME_IO];
-    strcpy(directory, connected.db_directory);
-    strcat(directory, objeto.nArquivo);
-
-    tp_buffer *buffer = getBlock((unsigned int) page, directory);
-
-    tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (buffer->nrec)); //Aloca a quantidade de tuplas necessária
-
-    if(!tuplas)
-        return ERRO_DE_ALOCACAO;
-
-    int  indiceTupla=0, i=0;
-
-    if (!buffer->position)
-        return NULL;
-
-    char* nullos =(char *)uffslloc(objeto.qtdCampos * sizeof(char));
-
-    while(i < buffer->position){
-        
-        if(isDeleted(buffer->data + i)) {
-            i+=tamTupla(campos, objeto);
-            continue;
-        }
-        tuplas[indiceTupla].offset = i; 
-        tuplas[indiceTupla].ncols = objeto.qtdCampos;
-        i++; //para o byte de deleted
-        memcpy(nullos, buffer->data + i, objeto.qtdCampos);
-        i += objeto.qtdCampos;
-
-
-        tuplas[indiceTupla].column = (column *)uffslloc(sizeof(column) * objeto.qtdCampos);
-        tuplas[indiceTupla].bufferPage = page;
-        for (int ic = 0; ic < objeto.qtdCampos; ic++){
-            column *c = &tuplas[indiceTupla].column[ic];
-
-            c->tipoCampo = campos[ic].tipo;
-            strcpy(c->nomeCampo, campos[ic].nome); //Guarda nome do campo
-            if(nullos[ic]) c->valorCampo = COLUNA_NULL;
-            else {
-                c->valorCampo = (char *)uffslloc(sizeof(char) * campos[ic].tam + 1);
-                memcpy(c->valorCampo, buffer->data + i, campos[ic].tam);
-                c->valorCampo[campos[ic].tam] = '\0';
-            }
-            i += campos[ic].tam;
-        }
-    
-        indiceTupla++;
-    }
-    PageResult *pg = (PageResult *)uffslloc(sizeof(PageResult));
-    pg->tuplas = tuplas;
-    pg->nrec = indiceTupla;
-
-    return pg; //Retorna a 'page' do buffer
-}
-
-// EXCLUIR TUPLA BUFFER
-column * excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto, int page, int nTupla){
-    column *tuplas = (column *)uffslloc(sizeof(column)*objeto.qtdCampos);
-
-    if(tuplas == NULL)
-        return ERRO_DE_ALOCACAO;
-
-    if(buffer[page].nrec == 0) //Essa página não possui registros
+/* -----------------------------------------------------------------------
+ * excluirTuplaBuffer
+ * ----------------------------------------------------------------------- */
+column* excluirTuplaBuffer(tp_buffer *buffer, tp_table *campos, struct fs_objects objeto,
+                            int page_id, int nTupla) {
+    if (global_buffer_manager == NULL) {
+        fprintf(stderr, "ERROR: BufferManager not initialized. excluirTuplaBuffer()\n");
         return ERRO_PARAMETRO;
-
-    int i, tamTpl = tamTupla(campos, objeto), j=0, t=0;
-    i = tamTpl*nTupla; //Calcula onde começa o registro
-
-    while(i < tamTpl*nTupla+tamTpl){
-        t=0;
-
-        tuplas[j].valorCampo = (char *)uffslloc(sizeof(char)*campos[j].tam); //Aloca a quantidade necessária para cada campo
-        tuplas[j].tipoCampo = campos[j].tipo;  // Guarda o tipo do campo
-        strcpylower(tuplas[j].nomeCampo, campos[j].nome);   //Guarda o nome do campo
-
-        while(t < campos[j].tam){
-            tuplas[j].valorCampo[t] = buffer[page].data[i];    //Copia os dados
-            t++;
-            i++;
-        }
-        j++;
-    }
-    j = i;
-    i = tamTpl*nTupla;
-    for(; i < buffer[page].position; i++, j++) //Desloca os bytes do buffer sobre a tupla excluida
-        buffer[page].data[i] = buffer[page].data[j];
-
-    buffer[page].position -= tamTpl;
-    buffer[page].nrec--;
-
-    return tuplas; //Retorna a tupla excluida do buffer
-}
-// INSERE UMA TUPLA NO BUFFER!
-char *getTupla(tp_table *campos,struct fs_objects objeto, int from){ //Pega uma tupla do disco a partir do valor de from
-    // + qtdCampos para os bytes de coluna null e +1 para o byte de tupla valida
-    int tamTpl = tamTupla(campos, objeto); 
-    char *linha=(char *)uffslloc(sizeof(char)*tamTpl);
-
-    FILE *dados;
-    from = from * tamTpl;
-	char directory[LEN_DB_NAME_IO];
-    strcpy(directory, connected.db_directory);
-    strcat(directory, objeto.nArquivo);
-
-    dados = fopen(directory, "r");
-
-    if (dados == NULL) {
-        return ERRO_DE_LEITURA;
     }
 
-    fseek(dados, from, SEEK_CUR);
-    if(fgetc (dados) == EOF){
-        fclose(dados);
-        return ERRO_DE_LEITURA;
+    char filepath[LEN_DB_NAME_IO * 2];
+    snprintf(filepath, sizeof(filepath), "%s%s", connected.db_directory, objeto.nArquivo);
+
+    tp_buffer* page_buffer = BM_GetPage(global_buffer_manager, filepath, (unsigned int)page_id);
+    if (page_buffer == NULL) {
+        fprintf(stderr, "ERROR: Page %d not found for deletion.\n", page_id);
+        return ERRO_PARAMETRO;
     }
-    
-    fseek(dados, -1, SEEK_CUR);
-    fread(linha, sizeof(char), tamTpl, dados); //Traz a tupla inteira do arquivo
 
-    fclose(dados);
-    return linha;
-}
-/////
-void setTupla(tp_buffer *buffer,char *tupla, int tam, int pos) { //Coloca uma tupla de tamanho "tam" no buffer e na página "pos"
-  int i = buffer[pos].position;
-  for (; i < buffer[pos].position + tam; i++)
-    buffer[pos].data[i] = *(tupla++);
-}
-//// insere uma tupla no buffer
-int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto){//Define a página que será incluida uma nova tupla
-    int i, found;
-    char *tupla = getTupla(campos, objeto, from);
-    if(tupla == ERRO_DE_LEITURA)  return ERRO_LEITURA_DADOS;
+    unsigned int current_offset = 0;
+    int tuple_size = tamTupla(campos, objeto);
+    int found_tupla_index = 0;
+    int target_offset = -1;
 
-    int tam = tamTupla(campos, objeto);
-
-    for(i = found = 0; !found && i < PAGES; i++) {//Procura pagina com espaço para a tupla.
-        if(SIZE - buffer[i].position > tam) {// Se na pagina i do buffer tiver espaço para a tupla, coloca tupla.
-            setTupla(buffer, tupla, tam, i);
-            found = 1;
-            buffer[i].position += tam; // Atualiza proxima posição vaga dentro da pagina.
-            if(isDeleted(tupla)) {
-                return ERRO_LEITURA_DADOS_DELETADOS;
+    while (current_offset < page_buffer->position) {
+        if (page_buffer->data[current_offset] == '0') {
+            if (found_tupla_index == nTupla) {
+                target_offset = current_offset;
+                break;
             }
-             buffer[i].nrec++;
+            found_tupla_index++;
+        }
+        current_offset += tuple_size;
+    }
+    BM_UnpinPage(global_buffer_manager, filepath, (unsigned int)page_id);
+
+    if (target_offset == -1) {
+        fprintf(stderr, "ERROR: Tuple index %d not found in page %d.\n", nTupla, page_id);
+        return ERRO_PARAMETRO;
+    }
+
+    int result = RM_DeleteRecord(global_buffer_manager, filepath, campos, objeto,
+                                  (unsigned int)page_id, (unsigned int)target_offset);
+    if (result != 0) {
+        return ERRO_PARAMETRO;
+    }
+    return NULL;
+}
+
+/* -----------------------------------------------------------------------
+ * getTupla
+ * ----------------------------------------------------------------------- */
+char* getTupla(tp_table *campos, struct fs_objects objeto, int from) {
+    if (global_buffer_manager == NULL) {
+        fprintf(stderr, "ERROR: BufferManager not initialized. getTupla()\n");
+        return ERRO_DE_LEITURA;
+    }
+
+    char filepath[LEN_DB_NAME_IO * 2];
+    snprintf(filepath, sizeof(filepath), "%s%s", connected.db_directory, objeto.nArquivo);
+
+    unsigned int page_id = 0;
+    unsigned int offset  = (unsigned int)from;
+
+    tp_buffer* page_buffer = BM_GetPage(global_buffer_manager, filepath, page_id);
+    if (page_buffer == NULL) {
+        fprintf(stderr, "ERROR: Failed to get page %u for getTupla.\n", page_id);
+        return ERRO_DE_LEITURA;
+    }
+
+    tupla *t = PAGE_GetTupla(page_buffer, offset, campos, objeto);
+    BM_UnpinPage(global_buffer_manager, filepath, page_id);
+
+    if (t == NULL) {
+        return ERRO_DE_LEITURA;
+    }
+
+    if (t->ncols > 0 && t->column[0].valorCampo != NULL) {
+        char *result_str = (char*)uffsllocType(strlen(t->column[0].valorCampo) + 1, TEMPORARY);
+        if (result_str) {
+            strcpy(result_str, t->column[0].valorCampo);
+            return result_str;
         }
     }
-    return found ? SUCCESS : ERRO_BUFFER_CHEIO;
-}
-////////
-
-void cria_campo(int tam, int header, char *val, int x) {
-  int i;
-  char aux[30];
-  if(header){
-    for(i = 0; i <= 30 && val[i] != '\0'; i++) aux[i] = val[i];
-    for(;i < 30;i++) aux[i] = ' ';
-    aux[i] ='\0';
-    printf("%s", aux);
-    return;
-  }
-  for(i = 0; i < x; i++) printf(" ");
+    return ERRO_DE_LEITURA;
 }
 
-/* ----------------------------------------------------------------------------------------------
-    Objetivo:   Utilizada para gravar as mudanças do buffer no disco.
-    Parametros: Buffer (tp_buffer), dados da tabela (fs_objects), número de blocos e offset do bloco.
-    Retorno:    1 para sucesso, 0 para falha.
-   ---------------------------------------------------------------------------------------------*/
-int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
-    int success = 1; // flag de sucesso porque sucesso deveria valer 1 não 0!
-    char directory[LEN_DB_NAME_IO];
-    strcpy(directory, connected.db_directory);
-    strcat(directory, objeto->nArquivo);
-
-    FILE *dados = fopen(directory, "r+b");
-    if (!dados) {
-        printf("ERROR: Unable to open file for writing.\n");
-        return 0;
-    }
-    
-    fseek(dados, buffer->id *sizeof(tp_buffer), SEEK_SET);
-    buffer->db = 0;
-    buffer->pc = 0;
-    fwrite(buffer, sizeof(tp_buffer), 1, dados);
-    fclose(dados);
-
-    return success;
-}
-
-static int isDeleted(char *linha){
-    return linha[0]; //byte se foi deletado
-}
-
-void addColumn(column **colList, column *c){
-    c->next = NULL;
-    if(*colList == NULL) {
-        *colList = c;
+/* -----------------------------------------------------------------------
+ * setTupla  (wrapper limitado — mantido para compatibilidade de compilação)
+ * ----------------------------------------------------------------------- */
+void setTupla(tp_buffer *buffer, char *tupla_data, int tam, int pos) {
+    if (global_buffer_manager == NULL) {
+        fprintf(stderr, "ERROR: BufferManager not initialized. setTupla()\n");
         return;
     }
-    column *t = *colList;
-    while(t->next != NULL) t = t->next;
-    
-    t->next = c;
+    fprintf(stderr, "WARNING: setTupla wrapper is limited. Use RM_InsertRecord or PAGE_SetTupla.\n");
 }
+
+/* -----------------------------------------------------------------------
+ * colocaTuplaBuffer  (wrapper limitado)
+ * ----------------------------------------------------------------------- */
+int colocaTuplaBuffer(tp_buffer *buffer, int from, tp_table *campos, struct fs_objects objeto) {
+    if (global_buffer_manager == NULL) {
+        fprintf(stderr, "ERROR: BufferManager not initialized. colocaTuplaBuffer()\n");
+        return ERRO_BUFFER_CHEIO;
+    }
+    fprintf(stderr, "WARNING: colocaTuplaBuffer wrapper is limited. Use RM_InsertRecord.\n");
+    return ERRO_BUFFER_CHEIO;
+}
+
+/* -----------------------------------------------------------------------
+ * writeBufferToDisk
+ *
+ * Grava o frame `buffer` no disco usando o filename armazenado no próprio
+ * frame. Se o filename estiver vazio (frame criado por initBuffer antes de
+ * um INSERT), o objeto é usado para montar o caminho.
+ * ----------------------------------------------------------------------- */
+int writeBufferToDisk(tp_buffer *buffer, struct fs_objects *objeto) {
+    if (global_buffer_manager == NULL) {
+        fprintf(stderr, "ERROR: BufferManager not initialized. writeBufferToDisk()\n");
+        return 0;
+    }
+    if (buffer == NULL || buffer->id == (unsigned int)INVALID_PAGE_ID) {
+        fprintf(stderr, "ERROR: Invalid buffer provided to writeBufferToDisk.\n");
+        return 0;
+    }
+
+    /* Determina o filepath */
+    char filepath[LEN_DB_NAME_IO * 2];
+    if (buffer->filename[0] != '\0') {
+        strncpy(filepath, buffer->filename, sizeof(filepath) - 1);
+        filepath[sizeof(filepath) - 1] = '\0';
+    } else if (objeto != NULL) {
+        snprintf(filepath, sizeof(filepath), "%s%s", connected.db_directory, objeto->nArquivo);
+        /* Registra o filename no frame para futuros flushes */
+        strncpy(buffer->filename, filepath, sizeof(buffer->filename) - 1);
+        buffer->filename[sizeof(buffer->filename) - 1] = '\0';
+    } else {
+        fprintf(stderr, "ERROR: writeBufferToDisk: cannot determine filename.\n");
+        return 0;
+    }
+
+    buffer->db = 1; /* garante que será gravado */
+    if (BM_FlushPage(global_buffer_manager, filepath, buffer->id) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/* Declarações externas necessárias para linkagem */
+extern int cabecalho(tp_table *s, int num_reg);
+extern int drawline(tupla *t, tp_table *s, struct fs_objects objeto);

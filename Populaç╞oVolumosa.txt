@@ -1,0 +1,505 @@
+create table Ambulatorio (
+	numeroA integer primary key,
+	andar integer,
+	capacidade integer);
+
+create table Medico (
+	crm integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	especialidade varchar(30),
+	numeroA integer references Ambulatorio(numeroA));
+
+create table Paciente (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	doenca varchar(30));
+
+create table Consulta (
+	crm integer primary key,
+	rg integer references Paciente(rg),
+	data varchar(40),
+	hora varchar(40));
+
+create table Funcionario (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	salario double);
+
+
+insert into Ambulatorio values (311,3,33);
+insert into Ambulatorio values (312,2,27);
+insert into Ambulatorio values (313,4,18);
+insert into Ambulatorio values (314,1,57);
+insert into Ambulatorio values (315,5,37);
+insert into Ambulatorio values (316,6,23);
+insert into Ambulatorio values (317,6,42);
+insert into Ambulatorio values (318,7,25);
+insert into Ambulatorio values (319,9,32);
+insert into Ambulatorio values (320,9,32);
+insert into Ambulatorio values (321,9,32);
+insert into Ambulatorio values (322,9,32);
+insert into Ambulatorio values (323,9,32);
+insert into Ambulatorio values (324,9,32);
+insert into Ambulatorio values (325,9,32);
+insert into Ambulatorio values (326,9,32);
+insert into Ambulatorio values (327,9,32);
+insert into Ambulatorio values (328,9,32);
+insert into Ambulatorio values (329,9,32);
+insert into Ambulatorio values (330,9,32);
+insert into Ambulatorio values (331,9,32);
+insert into Ambulatorio values (332,9,32);
+insert into Ambulatorio values (333,9,32);
+insert into Ambulatorio values (334,9,32);
+insert into Ambulatorio values (335,9,32);
+
+insert into Medico values (015875123,'DrIgor',30,'Palmitos','cardiologista',312);
+insert into Medico values (015875124,'DrMarcos',30,'Pato_Branco','dermatologista',313);
+insert into Medico values (015875125,'DrPedro',31,'Chapeco','pediatra',314);
+insert into Medico values (015875126,'DrPaulo',29,'Chapeco','ginecologista',315);
+insert into Medico values (015875127,'DrRegis',47,'Palmitos','oftalmologista',316);
+insert into Medico values (015875128,'DrEliton',53,'Caibi','clinico_geral',311);
+insert into Medico values (015875129,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875130,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875131,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875132,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875133,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875134,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875135,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875136,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875137,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875138,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875139,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875140,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875141,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875142,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875143,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875144,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875145,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875146,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875147,'DrRicardo',38,'Xanxere','dermatologista',317);
+
+insert into Paciente values (1158750,'pIgor',18,'Palmitos','catarata');
+insert into Paciente values (1158751,'pMarcos',15,'Chapeco','sarampo');
+insert into Paciente values (1158752,'pPedro',6,'Palmas','tetano');
+insert into Paciente values (1158753,'pPaulo',3,'Pato_Branco','pneumonia');
+insert into Paciente values (1158754,'pRegis',9,'Florianopolis','sarampo');
+insert into Paciente values (1158755,'pEliton',11,'Caibi','tetano');
+insert into Paciente values (1158756,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158757,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158758,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158759,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158760,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158761,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158762,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158763,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158764,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158765,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158766,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158767,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158768,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158769,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158770,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158771,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158772,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158773,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158774,'pRicardo',8,'Xanxere','catarata');
+
+insert into Consulta values (015875123,1158750,'01/07/2014', '14:15:00');
+insert into Consulta values (015875124,1158751,'02/07/2014', '14:15:00');
+insert into Consulta values (015875125,1158752,'03/07/2014', '15:25:00');
+insert into Consulta values (015875126,1158753,'03/07/2014', '15:25:00');
+insert into Consulta values (015875127,1158754,'03/07/2014', '15:25:00');
+insert into Consulta values (015875128,1158755,'03/07/2014', '15:25:00');
+insert into Consulta values (015875129,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875130,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875131,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875132,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875133,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875134,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875135,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875136,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875137,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875138,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875139,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875140,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875141,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875142,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875143,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875144,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875145,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875146,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875147,1158756,'03/07/2014', '15:25:00');
+
+insert into Funcionario values (2158750,'fLucas',20,'Xanxere',2537.00);
+insert into Funcionario values (2158751,'fRafael',23,'Chapeco',1537.00);
+insert into Funcionario values (2158752,'fIgor',27,'Palmitos',1750.00);
+insert into Funcionario values (2158753,'fMarcos',30,'Pato_Branco',2000.00);
+insert into Funcionario values (2158754,'fRegis',33,'Chapeco',1200.00);
+insert into Funcionario values (2158755,'fEliton',24,'Caibi',1400.00);
+insert into Funcionario values (2158756,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158757,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158758,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158759,'fPaulo',27,'Chapeco',1400.50);
+insert into Funcionario values (2158760,'fPaulo',27,'Chapeco',1400.80);
+insert into Funcionario values (2158761,'fPaulo',27,'Chapeco',1400.89);
+insert into Funcionario values (2158762,'fPaulo',27,'Chapeco',1400.45);
+insert into Funcionario values (2158763,'fPaulo',27,'Chapeco',1400.546);
+insert into Funcionario values (2158764,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158765,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158766,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158767,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158768,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158769,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158770,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158771,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158772,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158773,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158774,'fPaulo',27,'Chapeco',1400.00);
+
+create database banco;
+
+\c banco
+
+create table Ambulatorio (
+	numeroA integer primary key,
+	andar integer,
+	capacidade integer);
+
+create table Medico (
+	crm integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	especialidade varchar(30),
+	numeroA integer references Ambulatorio(numeroA));
+
+create table Paciente (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	doenca varchar(30));
+
+create table Consulta (
+	crm integer primary key,
+	rg integer references Paciente(rg),
+	data varchar(40),
+	hora varchar(40));
+
+create table Funcionario (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	salario double);
+
+
+insert into Ambulatorio values (311,3,33);
+insert into Ambulatorio values (312,2,27);
+insert into Ambulatorio values (313,4,18);
+insert into Ambulatorio values (314,1,57);
+insert into Ambulatorio values (315,5,37);
+insert into Ambulatorio values (316,6,23);
+insert into Ambulatorio values (317,6,42);
+insert into Ambulatorio values (318,7,25);
+insert into Ambulatorio values (319,9,32);
+insert into Ambulatorio values (320,9,32);
+insert into Ambulatorio values (321,9,32);
+insert into Ambulatorio values (322,9,32);
+insert into Ambulatorio values (323,9,32);
+insert into Ambulatorio values (324,9,32);
+insert into Ambulatorio values (325,9,32);
+insert into Ambulatorio values (326,9,32);
+insert into Ambulatorio values (327,9,32);
+insert into Ambulatorio values (328,9,32);
+insert into Ambulatorio values (329,9,32);
+insert into Ambulatorio values (330,9,32);
+insert into Ambulatorio values (331,9,32);
+insert into Ambulatorio values (332,9,32);
+insert into Ambulatorio values (333,9,32);
+insert into Ambulatorio values (334,9,32);
+insert into Ambulatorio values (335,9,32);
+
+insert into Medico values (015875123,'DrIgor',30,'Palmitos','cardiologista',312);
+insert into Medico values (015875124,'DrMarcos',30,'Pato_Branco','dermatologista',313);
+insert into Medico values (015875125,'DrPedro',31,'Chapeco','pediatra',314);
+insert into Medico values (015875126,'DrPaulo',29,'Chapeco','ginecologista',315);
+insert into Medico values (015875127,'DrRegis',47,'Palmitos','oftalmologista',316);
+insert into Medico values (015875128,'DrEliton',53,'Caibi','clinico_geral',311);
+insert into Medico values (015875129,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875130,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875131,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875132,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875133,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875134,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875135,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875136,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875137,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875138,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875139,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875140,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875141,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875142,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875143,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875144,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875145,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875146,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875147,'DrRicardo',38,'Xanxere','dermatologista',317);
+
+insert into Paciente values (1158750,'pIgor',18,'Palmitos','catarata');
+insert into Paciente values (1158751,'pMarcos',15,'Chapeco','sarampo');
+insert into Paciente values (1158752,'pPedro',6,'Palmas','tetano');
+insert into Paciente values (1158753,'pPaulo',3,'Pato_Branco','pneumonia');
+insert into Paciente values (1158754,'pRegis',9,'Florianopolis','sarampo');
+insert into Paciente values (1158755,'pEliton',11,'Caibi','tetano');
+insert into Paciente values (1158756,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158757,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158758,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158759,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158760,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158761,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158762,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158763,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158764,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158765,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158766,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158767,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158768,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158769,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158770,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158771,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158772,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158773,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158774,'pRicardo',8,'Xanxere','catarata');
+
+insert into Consulta values (015875123,1158750,'01/07/2014', '14:15:00');
+insert into Consulta values (015875124,1158751,'02/07/2014', '14:15:00');
+insert into Consulta values (015875125,1158752,'03/07/2014', '15:25:00');
+insert into Consulta values (015875126,1158753,'03/07/2014', '15:25:00');
+insert into Consulta values (015875127,1158754,'03/07/2014', '15:25:00');
+insert into Consulta values (015875128,1158755,'03/07/2014', '15:25:00');
+insert into Consulta values (015875129,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875130,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875131,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875132,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875133,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875134,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875135,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875136,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875137,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875138,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875139,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875140,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875141,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875142,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875143,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875144,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875145,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875146,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875147,1158756,'03/07/2014', '15:25:00');
+
+insert into Funcionario values (2158750,'fLucas',20,'Xanxere',2537.00);
+insert into Funcionario values (2158751,'fRafael',23,'Chapeco',1537.00);
+insert into Funcionario values (2158752,'fIgor',27,'Palmitos',1750.00);
+insert into Funcionario values (2158753,'fMarcos',30,'Pato_Branco',2000.00);
+insert into Funcionario values (2158754,'fRegis',33,'Chapeco',1200.00);
+insert into Funcionario values (2158755,'fEliton',24,'Caibi',1400.00);
+insert into Funcionario values (2158756,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158757,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158758,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158759,'fPaulo',27,'Chapeco',1400.50);
+insert into Funcionario values (2158760,'fPaulo',27,'Chapeco',1400.80);
+insert into Funcionario values (2158761,'fPaulo',27,'Chapeco',1400.89);
+insert into Funcionario values (2158762,'fPaulo',27,'Chapeco',1400.45);
+insert into Funcionario values (2158763,'fPaulo',27,'Chapeco',1400.546);
+insert into Funcionario values (2158764,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158765,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158766,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158767,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158768,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158769,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158770,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158771,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158772,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158773,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158774,'fPaulo',27,'Chapeco',1400.00);
+
+drop table funcionario;
+
+create database dados;
+
+\c dados
+
+create table Ambulatorio (
+	numeroA integer primary key,
+	andar integer,
+	capacidade integer);
+
+create table Medico (
+	crm integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	especialidade varchar(30),
+	numeroA integer references Ambulatorio(numeroA));
+
+create table Paciente (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	doenca varchar(30));
+
+create table Consulta (
+	crm integer primary key,
+	rg integer references Paciente(rg),
+	data varchar(40),
+	hora varchar(40));
+
+create table Funcionario (
+	rg integer primary key,
+	nome varchar(30),
+	idade integer,
+	cidade varchar(30),
+	salario double);
+
+
+insert into Ambulatorio values (311,3,33);
+insert into Ambulatorio values (312,2,27);
+insert into Ambulatorio values (313,4,18);
+insert into Ambulatorio values (314,1,57);
+insert into Ambulatorio values (315,5,37);
+insert into Ambulatorio values (316,6,23);
+insert into Ambulatorio values (317,6,42);
+insert into Ambulatorio values (318,7,25);
+insert into Ambulatorio values (319,9,32);
+insert into Ambulatorio values (320,9,32);
+insert into Ambulatorio values (321,9,32);
+insert into Ambulatorio values (322,9,32);
+insert into Ambulatorio values (323,9,32);
+insert into Ambulatorio values (324,9,32);
+insert into Ambulatorio values (325,9,32);
+insert into Ambulatorio values (326,9,32);
+insert into Ambulatorio values (327,9,32);
+insert into Ambulatorio values (328,9,32);
+insert into Ambulatorio values (329,9,32);
+insert into Ambulatorio values (330,9,32);
+insert into Ambulatorio values (331,9,32);
+insert into Ambulatorio values (332,9,32);
+insert into Ambulatorio values (333,9,32);
+insert into Ambulatorio values (334,9,32);
+insert into Ambulatorio values (335,9,32);
+
+insert into Medico values (015875123,'DrIgor',30,'Palmitos','cardiologista',312);
+insert into Medico values (015875124,'DrMarcos',30,'Pato_Branco','dermatologista',313);
+insert into Medico values (015875125,'DrPedro',31,'Chapeco','pediatra',314);
+insert into Medico values (015875126,'DrPaulo',29,'Chapeco','ginecologista',315);
+insert into Medico values (015875127,'DrRegis',47,'Palmitos','oftalmologista',316);
+insert into Medico values (015875128,'DrEliton',53,'Caibi','clinico_geral',311);
+insert into Medico values (015875129,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875130,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875131,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875132,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875133,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875134,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875135,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875136,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875137,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875138,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875139,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875140,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875141,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875142,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875143,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875144,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875145,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875146,'DrRicardo',38,'Xanxere','dermatologista',317);
+insert into Medico values (015875147,'DrRicardo',38,'Xanxere','dermatologista',317);
+
+insert into Paciente values (1158750,'pIgor',18,'Palmitos','catarata');
+insert into Paciente values (1158751,'pMarcos',15,'Chapeco','sarampo');
+insert into Paciente values (1158752,'pPedro',6,'Palmas','tetano');
+insert into Paciente values (1158753,'pPaulo',3,'Pato_Branco','pneumonia');
+insert into Paciente values (1158754,'pRegis',9,'Florianopolis','sarampo');
+insert into Paciente values (1158755,'pEliton',11,'Caibi','tetano');
+insert into Paciente values (1158756,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158757,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158758,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158759,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158760,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158761,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158762,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158763,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158764,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158765,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158766,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158767,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158768,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158769,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158770,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158771,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158772,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158773,'pRicardo',8,'Xanxere','catarata');
+insert into Paciente values (1158774,'pRicardo',8,'Xanxere','catarata');
+
+insert into Consulta values (015875123,1158750,'01/07/2014', '14:15:00');
+insert into Consulta values (015875124,1158751,'02/07/2014', '14:15:00');
+insert into Consulta values (015875125,1158752,'03/07/2014', '15:25:00');
+insert into Consulta values (015875126,1158753,'03/07/2014', '15:25:00');
+insert into Consulta values (015875127,1158754,'03/07/2014', '15:25:00');
+insert into Consulta values (015875128,1158755,'03/07/2014', '15:25:00');
+insert into Consulta values (015875129,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875130,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875131,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875132,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875133,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875134,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875135,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875136,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875137,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875138,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875139,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875140,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875141,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875142,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875143,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875144,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875145,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875146,1158756,'03/07/2014', '15:25:00');
+insert into Consulta values (015875147,1158756,'03/07/2014', '15:25:00');
+
+insert into Funcionario values (2158750,'fLucas',20,'Xanxere',2537.00);
+insert into Funcionario values (2158751,'fRafael',23,'Chapeco',1537.00);
+insert into Funcionario values (2158752,'fIgor',27,'Palmitos',1750.00);
+insert into Funcionario values (2158753,'fMarcos',30,'Pato_Branco',2000.00);
+insert into Funcionario values (2158754,'fRegis',33,'Chapeco',1200.00);
+insert into Funcionario values (2158755,'fEliton',24,'Caibi',1400.00);
+insert into Funcionario values (2158756,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158757,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158758,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158759,'fPaulo',27,'Chapeco',1400.50);
+insert into Funcionario values (2158760,'fPaulo',27,'Chapeco',1400.80);
+insert into Funcionario values (2158761,'fPaulo',27,'Chapeco',1400.89);
+insert into Funcionario values (2158762,'fPaulo',27,'Chapeco',1400.45);
+insert into Funcionario values (2158763,'fPaulo',27,'Chapeco',1400.546);
+insert into Funcionario values (2158764,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158765,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158766,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158767,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158768,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158769,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158770,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158771,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158772,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158773,'fPaulo',27,'Chapeco',1400.00);
+insert into Funcionario values (2158774,'fPaulo',27,'Chapeco',1400.00);
+
+
+\c uffsdb
+
