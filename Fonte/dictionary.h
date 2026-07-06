@@ -95,8 +95,7 @@ table *iniciaTabela(char *);
     tipoCampo - Tipo do campo que irá ser inserido na lista de campos.
     tamanhoCampo - Tamanho do campo que irá ser inserido na lista de campos.
 */
-
-table *adicionaCampo(table *t, char *nomeCampo, char tipoCampo, int tamanhoCampo, int tChave, char *tabelaApt, char *attApt, ushort codFK);
+table *adicionaCampo(table *,char *, char , int , int , char *, char *, ushort codFK);
 /*
     Esta função finaliza a tabela preveamente estrutura pelas funcoes iniciaTabela() e adicionaCampo().
     Escreve nos arquivos fs_object.dat e fs_schema.dat, a estrutura passada.

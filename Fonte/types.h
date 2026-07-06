@@ -3,7 +3,6 @@
 #include "Utility.h"
 #include "int.h"
 #include <stdint.h>
-#include <stdio.h>
 #include "macros.h"
 
 #define FTYPES 1 // flag para identificar se types.h já foi incluída
@@ -56,35 +55,11 @@ typedef struct tp_buffer{ // Estrutura utilizada para armazenar o buffer.
     unsigned int id;        // posição do bloco no arquivo em relação aos outros blocos [0,1,2,...[
     unsigned int nrec;       //Número de registros armazenados na página.
     uint32_t position;   // Número da quantidade de registro que a página ainda pode receber;
+    // TODO: Separar a struct o que precisar ser persistida e o que fica na memória
     unsigned char db;        //Dirty bit
     unsigned char pc;        //Pin counter
-        
-    // Campo adicional para LRU (não persistido no disco, mas necessário em memória)
-    uint64_t last_access;
-
-    // Nome do arquivo de onde esta página foi carregada (não persistido em disco)
-    char filename[256];
-
-    char data[SIZE];         // Dados reais do bloco
+    char data[SIZE];         // Dados
 }tp_buffer;
-
-// Estrutura para representar o Buffer Pool
-typedef struct {
-    unsigned int num_frames; // Quantidade total de frames no Buffer Pool.
-    unsigned int page_size;  // Tamanho de cada página em bytes.
-    tp_buffer* frames;       // Vetor de tp_buffer (agora são os frames).
-    long clock;              // Relógio global para controle de last_access (LRU).
-} BufferPool;
-
-// Estrutura do Buffer Manager
-typedef struct {
-    BufferPool* pool;         // O Buffer Pool subjacente
-    /* db_file_descriptor foi removido: o BM agora opera por arquivo por operação */
-    unsigned int num_reads;   // Estatística: número de leituras do disco
-    unsigned int num_writes;  // Estatística: número de escritas no disco
-} BufferManager;
-
-
 
 typedef struct rc_insert {
     char    *objName;           // Nome do objeto (tabela, banco de dados, etc...)
@@ -132,7 +107,6 @@ typedef struct db_connected {
     char *db_name;
     int conn_active;
 }db_connected;
-// Estrutura para simular o contexto de conexão do banco de dados
 
 // Sessão para fs do sistema 
 

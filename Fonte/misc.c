@@ -21,21 +21,6 @@
   #include "dictionary.h"
 #endif
 
-////////
-
-void cria_campo(int tam, int header, char *val, int x) {
-  int i;
-  char aux[30];
-  if(header){
-    for(i = 0; i <= 30 && val[i] != '\0'; i++) aux[i] = val[i];
-    for(;i < 30;i++) aux[i] = ' ';
-    aux[i] ='\0';
-    printf("%s", aux);
-    return;
-  }
-  for(i = 0; i < x; i++) printf(" ");
-}
-
 int cabecalho(tp_table *s, int num_reg) {
     int count, aux=0;
 
@@ -46,66 +31,74 @@ int cabecalho(tp_table *s, int num_reg) {
     printf("\n");
     return aux;
 }
+///////
+int drawline(tp_buffer *buffpoll, tp_table *s, struct fs_objects objeto, int p, int num_page) {
 
-int drawline(tupla *t, tp_table *s, struct fs_objects objeto)
-{
-    if (t == NULL)
-        return ERRO_IMPRESSAO;
-
-    column *col = t->column;
-    int i = 0;
-
-    while (col != NULL && i < objeto.qtdCampos)
-    {
-        if (col->valorCampo == COLUNA_NULL) {
-            printf("NULL");
-            cria_campo(s[i].tam, 0, NULL, 26);
-        } else {
-            switch (s[i].tipo)
-            {
-                case 'S':
-                    printf("%s", col->valorCampo);
-                    cria_campo(s[i].tam, 0, NULL,
-                               TAMANHO_NOME_CAMPO - strlen(col->valorCampo));
-                    break;
-
-                case 'I': {
-                    /* valorCampo contém bytes binários do int */
-                    int v = 0;
-                    memcpy(&v, col->valorCampo, sizeof(int));
-                    printf("%d", v);
-                    cria_campo(s[i].tam, 0, NULL, 28);
-                    break;
-                }
-
-                case 'D': {
-                    /* valorCampo contém bytes binários do double */
-                    double v = 0.0;
-                    memcpy(&v, col->valorCampo, sizeof(double));
-                    printf("%.3lf", v);
-                    cria_campo(s[i].tam, 0, NULL, 24);
-                    break;
-                }
-
-                case 'C':
-                    printf("%c", col->valorCampo[0]);
-                    cria_campo(s[i].tam, 0, NULL, 29);
-                    break;
-
-                default:
-                    return ERRO_IMPRESSAO;
-            }
-        }
-
-        col = col->next;
-        i++;
+    if (num_page > PAGES || p > SIZE) {
+        return ERRO_DE_PARAMETRO;
     }
+    int *pos_ini, aux = (p * tamTuplaSemByteControle(s,objeto)) , num_reg = objeto.qtdCampos;
+    pos_ini = &aux;
+    int count, pos_aux, bit_pos;
+    union c_double cd;
+    union c_int ci;
+    int x = 0;
 
+    count = pos_aux = bit_pos = 0;
+
+    for(count = 0; count < num_reg; count++) {
+        pos_aux = *(pos_ini);
+        bit_pos = 0;
+
+        switch(s[count].tipo) {
+            case 'S':
+                x = 0;
+                while(buffpoll[num_page].data[pos_aux] != '\0'){
+
+                    printf("%c", buffpoll[num_page].data[pos_aux]);
+                    if ((buffpoll[num_page].data[pos_aux++] & 0xc0) != 0x80) bit_pos++; //Conta apenas bits que possam ser impressos (UTF8)
+                x++;
+                }
+
+                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char*)' ', (30 - x));
+                break;
+
+            case 'I':
+                while(pos_aux < *(pos_ini) + s[count].tam){
+                    ci.cnum[bit_pos++] = buffpoll[num_page].data[pos_aux++];
+                }
+                printf("%d", ci.num); //Controla o número de casas até a centena
+                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char*)' ', 28);
+                break;
+
+            case 'D':
+                while(pos_aux < *(pos_ini) + s[count].tam){
+                    cd.double_cnum[bit_pos++] = buffpoll[num_page].data[pos_aux++]; // Cópias os bytes do double para área de memória da union
+                }
+                printf("%.3lf", cd.dnum);
+                cria_campo((TAMANHO_NOME_CAMPO - (bit_pos)), 0, (char*)' ', 24);
+                break;
+
+            case 'C':
+                printf("%c", buffpoll[num_page].data[pos_aux]);
+                if(s[count].tam < strlen(s[count].nome)){
+                    bit_pos = strlen(s[count].nome);
+                }
+                else{
+                    bit_pos = s[count].tam;
+                }
+                cria_campo((bit_pos - 1), 0, (char*)' ', 29);
+                break;
+
+            default:
+                return ERRO_IMPRESSAO;
+                break;
+        }
+        *(pos_ini) += s[count].tam;
+    }
     printf("\n");
     return SUCCESS;
 }
-
-
 ////
 void printHistory(){
     HIST_ENTRY **comands_list = history_list();
@@ -215,11 +208,9 @@ int objcmp(char *obj, char *str) {
 	return tolower(obj[i]) - tolower(str[i]);
 }
 
-void strcpylower(char *dest, const char *src) {
-    int i ;
-    for( i = 0; src[i]; i++) {
-        dest[i] = tolower(src[i]);
-    }    
+void strcpylower(char *dest, char *src) {
+	int i;
+    for(i = 0; src[i]; i++) dest[i] = tolower(src[i]);
     dest[i] = '\0';
 }
 

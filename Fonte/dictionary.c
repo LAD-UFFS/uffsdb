@@ -585,7 +585,7 @@ table *iniciaTabela(char *nome){
 }
 ////
 ////
-table *adicionaCampo(table *t, char *nomeCampo, char tipoCampo, int tamanhoCampo, int tChave, char *tabelaApt, char *attApt, ushort codFK){
+table *adicionaCampo(table *t,char *nomeCampo, char tipoCampo, int tamanhoCampo, int tChave, char *tabelaApt, char *attApt){
     tp_table *e = NULL;
      // Se a estrutura passada for nula, retorna erro.
     if(t == NULL) return ERRO_ESTRUTURA_TABELA_NULA;

@@ -85,7 +85,7 @@ void adcTokenWhere(char *token,int id){
 }
 
 void adcProjSelect(char *col){
-  char *str = uffslloc(sizeof(char)*(strlen(col)+1));
+  char *str = uffslloc(sizeof(char)*strlen(col));
   strcpy(str,col);
   if(!QUERY.proj) QUERY.proj = novaLista(NULL);
   adcNodo(QUERY.proj, QUERY.proj->ult, (void *)str);

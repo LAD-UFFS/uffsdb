@@ -415,61 +415,28 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     strcpy(directory, connected.db_directory);
     strcat(directory, dicio.nArquivo);
 
-    /* Garante que o BM global está inicializado */
-    if (global_buffer_manager == NULL) {
-        global_buffer_manager = BM_Init(16, SIZE);
-        if (global_buffer_manager == NULL) {
-            printf("ERROR: cannot initialize buffer manager.\n");
-            return ERRO_ABRIR_ARQUIVO;
-        }
-    }
-
-    /* Cria o arquivo se não existir */
-    if((dados = fopen(directory, "r+b")) == NULL) {
-        dados = fopen(directory, "w+b");
-        if (dados == NULL) {
-            printf("ERROR: cannot open file.\n");
-            return ERRO_ABRIR_ARQUIVO;
-        }
-    }
+    if((dados = fopen(directory,"r+b")) == NULL){
+        printf("ERROR: cannot open file.\n");
+        return ERRO_ABRIR_ARQUIVO;
+	}
+    long int offset = ftell(dados);
 
     tp_buffer *buffer;
-    if (objeto.lastBuffer == -1) {
-        /* Primeira inserção: obtém a página 0 (nova, zerada) */
-        buffer = BM_GetPage(global_buffer_manager, directory, 0);
-        if (buffer == NULL) {
-            printf("ERROR: cannot get buffer page 0.\n");
-            fclose(dados);
-            return ERRO_ABRIR_ARQUIVO;
-        }
+    if (objeto.lastBuffer == -1){
+        buffer = initBuffer(0);
         objeto.lastBuffer = 0;
-        updateSchema(&objeto);
+        // se o insert falhar ele atualiza aqui e é problema para os futuros inserts.
+        updateSchema(&objeto); 
     } else {
-        buffer = BM_GetPage(global_buffer_manager, directory, (unsigned int)objeto.lastBuffer);
-        if (buffer == NULL) {
-            printf("ERROR: cannot get buffer page %d.\n", objeto.lastBuffer);
-            fclose(dados);
-            return ERRO_ABRIR_ARQUIVO;
-        }
-        if (buffer->position + tamTupla > SIZE) {
-            /* Página cheia: despin e avança para a próxima */
-            BM_UnpinPage(global_buffer_manager, directory, (unsigned int)objeto.lastBuffer);
+        buffer = getBlock(objeto.lastBuffer, directory);
+        if(buffer == NULL) return ERRO_ABRIR_ARQUIVO;
+
+        if (buffer->position + tamTupla >= SIZE) {
+            buffer = initBuffer(objeto.lastBuffer + 1);
             objeto.lastBuffer++;
-            buffer = BM_GetPage(global_buffer_manager, directory, (unsigned int)objeto.lastBuffer);
-            if (buffer == NULL) {
-                printf("ERROR: cannot get buffer page %d.\n", objeto.lastBuffer);
-                fclose(dados);
-                return ERRO_ABRIR_ARQUIVO;
-            }
-            updateSchema(&objeto);
+            updateSchema(&objeto); 
         }
     }
-    /* Registra o arquivo no frame para que o flush funcione */
-    strncpy(buffer->filename, directory, sizeof(buffer->filename) - 1);
-    buffer->filename[sizeof(buffer->filename) - 1] = '\0';
-
-    /* Offset lógico para o índice B+ (posição da tupla no arquivo) */
-    long int offset = (long int)objeto.lastBuffer * SIZE + (long int)buffer->position;
 
     // fputc(0, dados); // flag para tupla não deletada
 
@@ -591,12 +558,9 @@ int finalizaInsert(char *nome, column *c, int tamTupla){
     memcpy(buffer->data + buffer->position, bufferTuple, tamTupla);
     buffer->position += tamTupla;
     DEBUG_PRINT("INSERT - Tuple size written in file: %d", tamTupla);
-
-    /* Marca a página como suja e grava no disco via BufferManager */
-    BM_MarkDirty(global_buffer_manager, directory, buffer->id);
-    BM_FlushPage(global_buffer_manager, directory, buffer->id);
-    BM_UnpinPage(global_buffer_manager, directory, buffer->id);
-    DEBUG_PRINT("INSERT - Block flushed via BufferManager, page %u", buffer->id);
+    fseek(dados, buffer->id * sizeof(tp_buffer), SEEK_SET);
+    fwrite(buffer, sizeof(tp_buffer), 1, dados);
+    DEBUG_PRINT("INSERT - Block size written in file: %d",  sizeof(tp_buffer));
 
     fim: //label para liberar a memória utilizada e fechar o arquivo de dados
         fclose(dados);
@@ -679,7 +643,7 @@ int validaProj(Lista *proj, tp_table *colunas, int qtdColunas, int *indiceProj){
         proj->prim = proj->ult = NULL;
         for(int j = 0; j < qtdColunas; j++){
             indiceProj[j] = (char) j;
-            char *str = uffslloc(TAMANHO_NOME_CAMPO);
+            char *str = uffslloc(sizeof(char) * strlen(colunas[j].nome));
             strcpy(str, colunas[j].nome);
             adcNodo(proj, proj->ult, str);
         }
@@ -711,7 +675,7 @@ int validaProj(Lista *proj, tp_table *colunas, int qtdColunas, int *indiceProj){
 inf_where *novoTokenWhere(char *str,int id){
   inf_where *novo = uffslloc(sizeof(inf_where));
   novo->id = id;
-  char *tk = uffslloc(sizeof(char)*(strlen(str)+1));
+  char *tk = uffslloc(sizeof(char)*strlen(str));
   strcpy(tk,str);
   novo->token = (void *)tk;
   return novo;
@@ -1118,8 +1082,7 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
 
     int *indiceProj = NULL, qtdCamposProj = 0;
     if(tipo == 's') {
-        /* Aloca com objeto.qtdCampos para suportar SELECT * que expande para todos os campos */
-        indiceProj = (int *)uffslloc(sizeof(int) * objeto.qtdCampos);
+        indiceProj = (int *)uffslloc(sizeof(int) * query->proj->tam);
         if(!validaProj(query->proj, esquema, objeto.qtdCampos, indiceProj)){
             return NULL;
         }
@@ -1138,8 +1101,6 @@ Lista *handleTableOperation(inf_query *query, char tipo) {
             printf("ERROR: could not open the table.\n");
             return NULL;
         }
-        /* Página vazia (nenhuma tupla ainda) é normal — apenas pula */
-        if(pagina == NULL) continue;
         for(k = 0; k < pagina->nrec; k++){
             tupla *currentTuple = &pagina->tuplas[k];
             char satisfies = 0;
