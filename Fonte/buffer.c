@@ -152,6 +152,9 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     if (pagina == NULL || pagina == ERRO_PARAMETRO)
         return ERRO_PARAMETRO;
 
+    bm_despinarPagina(pagina); // tava dando loop infinito nos selects que faziam select de uma tabela que não cabia inteira dentro do buffer pool
+    // getPage só lê a página pra copiar os dados pro PageResult, então não precisa mais segurar o pin depois daqui 
+
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (pagina->nrec)); // Aloca a quantidade de tuplas necessária
 
     if (!tuplas)
