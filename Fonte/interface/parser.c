@@ -24,6 +24,9 @@
 #ifndef FSQLCOMMANDS
    #include "../sqlcommands.h"
 #endif
+#ifndef FBUFFERMANAGER
+   #include "../bufferManager.h"
+#endif
 #ifndef FPARSER
    #include "parser.h"
 #endif
@@ -61,6 +64,7 @@ void invalidCommand(char *command) {
 
 void quit(int flag){
     write_history("data/history.txt");
+    bm_gravarTodasAsPaginasDoBufferNoDisco(); // vi que era aqui que o programa terminava (tem exit)
     destroyMemoryContext();
     exit(flag);
 };
@@ -260,9 +264,8 @@ void clearGlobalStructs() {
     GLOBAL_DATA.fkTable = NULL;
     GLOBAL_DATA.fkColumn = NULL;
 
-    GLOBAL_DATA.type = (char *)uffslloc(sizeof(char));
-
-    GLOBAL_DATA.attribute = (int *)uffslloc(sizeof(int));
+    GLOBAL_DATA.type = NULL;
+    GLOBAL_DATA.attribute = NULL;
 
     yylex_destroy();
 
@@ -338,7 +341,9 @@ int interface() {
                             break;
                         case OP_UPDATE:
                             resultado = handleTableOperation(&QUERY, 'u');
-                            op_update(resultado, &QUERY);
+                            if(resultado->prim && resultado->tam > 0){
+                                op_update(resultado, &QUERY);
+                            }else printf("UPDATED 0 rows\n");
                             break;
                         case OP_CREATE_TABLE:
                             createTable(&GLOBAL_DATA);
