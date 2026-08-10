@@ -1,12 +1,7 @@
-#define FBUFFER 1 // flag controlar os includes
+#pragma once
 
-#ifndef FMACROS // garante que macros.h não seja reincluída
 #include "macros.h"
-#endif
-//
-#ifndef FTYPES // garante que types.h não seja reincluída
 #include "types.h"
-#endif
 
 /*
     Esta função imprime todos os dados carregados numa determinada página do buffer

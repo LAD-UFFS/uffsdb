@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include "macros.h"
 
-#define FTYPES 1 // flag para identificar se types.h já foi incluída
-
 // isso é um registro da TABELA
 struct fs_objects
 {                                        // Estrutura usada para carregar fs_objects.dat
@@ -182,7 +180,7 @@ union c_int
 // #define QTD_PAGINAS_BUFFER_POOL 50; // vimos que já tem uma constante que diz isso na macros.h, com nome PAGES
 #define TAM_PAGINA_BF 400
 
-typedef struct um_slot_do_header_do_buffer_pool
+typedef struct buffer_pool_header
 {
     int id_tabela;                 // qual tabela ocupa este slot (-1 = slot livre) // = fs_objects.cod (ou seja: o id/código da tabela)
     int bloco_da_tabela;           // qual bloco da tabela "id_tabela" está neste slot
@@ -190,7 +188,7 @@ typedef struct um_slot_do_header_do_buffer_pool
     unsigned char pc;              // Pin counter
     char filename[LEN_DB_NAME_IO]; // pois sem o filename não tem como descorbrir o fs_objects da tabela pelo bp (buffer pool)
                                    // precisamos guardar o caminho do arquivo pra saber onde gravar quando quando o bloco sair do buffer pool e ir para o disco
-} um_slot_do_header_do_buffer_pool;
+} buffer_pool_header;
 
 typedef struct tp_pagina
 {                      // Estrutura utilizada para armazenar cada página.
@@ -200,13 +198,27 @@ typedef struct tp_pagina
     char data[SIZE];   // são os dados da página (as tuplas) -> SIZE = 1024 bytes de dados
 } tp_pagina;
 
+__attribute__((aligned(8)))
+typedef struct buffer_key
+{                              
+    uint32_t block; 
+    uint16_t table;          
+    uint16_t data_base;
+} buffer_key;
+
+typedef struct hash_entry {
+    buffer_key key;
+    int buffer_id; 
+} hash_entry;
+
 typedef struct buffer_pool
 { // estrutura do buffer poll
+    hash_entry hash_directory[PAGES*2];
     int qtd_paginas_total;
     int qtd_paginas_ocupadas;
     int qtd_paginas_desocupadas;
     int (*politicaTroca)(void);                     // ponteiro para a função de substituição (sugestão do João Gomes)
-    um_slot_do_header_do_buffer_pool header[PAGES]; // esse vai ser o header do buffer pool: cada índice desse vetor vai ter informações sobre o índice correspondente vetor da área de dados (vetor "páginas")
+    buffer_pool_header header[PAGES]; // esse vai ser o header do buffer pool: cada índice desse vetor vai ter informações sobre o índice correspondente vetor da área de dados (vetor "páginas")
     tp_pagina paginas[PAGES];                       // área onde vão estar todas as páginas que estão no BP
 } buffer_pool;
 

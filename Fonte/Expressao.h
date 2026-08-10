@@ -1,5 +1,6 @@
-#ifndef FEXPRESSAO
-#define FEXPRESSAO 1
+#pragma once
+
+#include "types.h"
 
 #define LOGICO 1
 #define RELACIONAL 2
@@ -12,10 +13,6 @@
 #define VALUE_NUMBER 9
 #define BOOLEANO 10
 #define NULLA 11
-
-#ifndef FTYPES
-  #include "types.h"
-#endif
 
 // Prototipos atualizados para refletir Expressao.c
 char precedArit(int id);
@@ -30,5 +27,3 @@ Lista *relacoes(Lista *l);
 char logPosfixa(Lista *l);
 char opLog(Lista *l);
 char precedLog(char *);
-
-#endif // FEXPRESSAO

@@ -1,4 +1,6 @@
-#define BLOCK_SIZE 16384 // limite em bytes do tamanho do blocos
+#pragma once
+
+#define BLOCK_SIZE 8192 // limite em bytes do tamanho do blocos
 #define FMACROS 0        // flag para identificar se macros.h já foi incluída
 // TRATAMENTO DE ERROS
 // ERROS inteiros
@@ -49,6 +51,7 @@
 ////
 #define SIZE 1024                    // Tamanho da página.
 #define PAGES 256                    // Número de páginas.
+
 #define TAMANHO_NOME_CAMPO 40      // Tamanho do nome dos campos de uma tabela.
 #define TAMANHO_NOME_CONSTRAINT 40 // Tamanho do nome da constraint.
 #define TAMANHO_NOME_TABELA 20     // Tamanho do nome da tabela.

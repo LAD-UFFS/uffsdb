@@ -6,30 +6,14 @@
 #include <readline/history.h>
 
 #include "../memoryContext.h"
-#ifndef FMACROS
-   #include "../macros.h"
-#endif
-#ifndef FTYPES
-   #include "../types.h"
-#endif
-#ifndef FUTILITY
-   #include "../Utility.h"
-#endif
-#ifndef FMISC
-   #include "../misc.h"
-#endif
-#ifndef FDATABASE
-   #include "../database.h"
-#endif
-#ifndef FSQLCOMMANDS
-   #include "../sqlcommands.h"
-#endif
-#ifndef FBUFFERMANAGER
-   #include "../bufferManager.h"
-#endif
-#ifndef FPARSER
-   #include "parser.h"
-#endif
+#include "../macros.h"
+#include "../types.h"
+#include "../Utility.h"
+#include "../misc.h"
+#include "../database.h"
+#include "../sqlcommands.h"
+#include "../bufferManager.h"
+#include "parser.h"
 
 /* Estrutura global que guarda as informações obtidas pelo yacc
  * na identificação dos tokens

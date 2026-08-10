@@ -4,9 +4,8 @@
 #include <math.h>
 #include "memoryContext.h"
 ////
-#ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
-   #include "btree.h"
-#endif
+#include "btree.h"
+
 int ordem;
 int ntuplas;
 //cria novo nodo vazio

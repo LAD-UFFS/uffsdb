@@ -4,29 +4,12 @@
 #include <ctype.h>
 
 #include "memoryContext.h"
-#ifndef FMACROS
-   #include "macros.h"
-#endif
-
-#ifndef FTYPES
-  #include "types.h"
-#endif
-
-#ifndef FEXPRESSAO
-  #include "Expressao.h"
-#endif
-
-#ifndef FTYPES
-  #include "types.h"
-#endif
-
-#ifndef FUTILITY
-  #include "Utility.h"
-#endif
-
-#ifndef FSQLCOMMANDS
-  #include "sqlcommands.h"
-#endif
+#include "macros.h"
+#include "types.h"
+#include "Expressao.h"
+#include "types.h"
+#include "Utility.h"
+#include "sqlcommands.h"
 
 int operador(int id){
   return (id == SINAL) || (id == ARITIMETICO);

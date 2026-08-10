@@ -1,8 +1,6 @@
-#define FMISC 1
-//
-#ifndef FTYPES // garante que types.h não seja reincluída
-  #include "types.h"
-#endif
+#pragma once
+
+#include "types.h"
 
 int cabecalho(tp_table *, int );
 int drawline(tp_pagina *, tp_table *, struct fs_objects, int , int);

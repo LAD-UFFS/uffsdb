@@ -1,24 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifndef FMACROS
+
 #include "macros.h"
-#endif
-#ifndef FTYPES
 #include "types.h"
-#endif
-#ifndef FMISC
 #include "misc.h"
-#endif
-#ifndef FDICTIONARY
 #include "dictionary.h"
-#endif
-#ifndef FSQLCOMMANDS
 #include "sqlcommands.h"
-#endif
-#ifndef FDATABASE
 #include "database.h"
-#endif
 
 #include "interface/y.tab.h"
 #include "buffer.h"

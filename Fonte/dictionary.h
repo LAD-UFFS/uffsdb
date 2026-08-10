@@ -1,7 +1,5 @@
-#define FDICTIONARY 1 // para testar se já foi incluída
-#ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
-   #include "btree.h"
-#endif
+#pragma once
+#include "btree.h"
 
 int existeArquivo(const char* );
 /* ----------------------------------------------------------------------------------------------

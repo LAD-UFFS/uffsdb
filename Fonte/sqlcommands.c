@@ -7,36 +7,15 @@
 #include <errno.h>
 #include <math.h>
 
-#ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
 #include "btree.h"
-#endif
-////
-#ifndef FMACROS // garante que macros.h não seja reincluída
 #include "macros.h"
-#endif
-///
-#ifndef FTYPES // garante que types.h não seja reincluída
 #include "types.h"
-#endif
-////
-#ifndef FMISC // garante que misc.h não seja reincluída
 #include "misc.h"
-#endif
-
-#ifndef FBUFFER // garante que buffer.h não seja reincluída
 #include "buffer.h"
-#endif
-
-#ifndef FDICTIONARY // the same
 #include "dictionary.h"
-#endif
-
-#ifndef FEXPRESSAO
 #include "Expressao.h"
-#endif
-#ifndef FBUFFERMANAGER
 #include "bufferManager.h"
-#endif
+
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Recebe o nome de uma tabela e engloba as funções leObjeto() e leSchema().
     Parametros: Nome da Tabela, Objeto da Tabela e tabela.
@@ -692,7 +671,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     printf("id=%u\n", buffer->id);
     printf("nrec=%u\n", buffer->nrec);
     printf("position=%u\n", buffer->position);*/
-
+    
     print_tabela_bloco(pagina, auxT, objeto, pagina->id); // para teste
 
 fim: // label para liberar a memória utilizada e fechar o arquivo de dados

@@ -3,14 +3,8 @@
 #include <string.h>
 #include "memoryContext.h"
 
-#ifndef FMACROS // garante que macros.h não seja reincluída
 #include "macros.h"
-#endif
-///
-#ifndef FTYPES // garante que types.h não seja reincluída
 #include "types.h"
-#endif
-
 #include "misc.h"
 #include "dictionary.h"
 #include "bufferManager.h"
@@ -18,10 +12,12 @@
 static int isDeleted(char *linha);
 
 //// imprime os dados no buffer (deprecated?)
-
+// printa as tuplas de uma tabela em uma determinada página
 int print_tabela_bloco(tp_pagina *pagina, tp_table *s, struct fs_objects objeto, int num_page)
-{ // printa as tuplas de uma tabela em uma determinada página (testei após fazer um insert)
-
+{ 
+    #ifndef DEBUG
+        return SUCCESS;
+    #endif
     int aux, i, num_reg = objeto.qtdCampos;
 
     if (pagina->nrec == 0)
@@ -30,43 +26,21 @@ int print_tabela_bloco(tp_pagina *pagina, tp_table *s, struct fs_objects objeto,
     }
 
     i = aux = 0;
-    /*printf("DENTRO DE PRINT_TABELA_BLOC\n");
-    printf("BM_NOVAPAGINA NO IF\n");
-    printf("print_tabela_bloco: pagina = %p\n", (void *)pagina);
-    printf("id=%d\n", pagina->id);
-    printf("nrec=%d\n", pagina->nrec);
-    printf("position=%d\n", pagina->position);*/
 
     printf("-------- Impressao da tabela %d de nome %s \n", objeto.cod, objeto.nome);
 
     aux = cabecalho(s, num_reg);
 
-    while (i < pagina->nrec)
-    { // Enquanto i < numero de registros * tamanho de uma instancia da tabela
-
-        // printf("ANTES drawline i=%d\n", i);
-
+    while (i < pagina->nrec){ 
+        // Enquanto i < numero de registros * tamanho de uma instancia da tabela
         drawline(pagina, s, objeto, i, num_page);
         i++;
-
-        // printf("DEPOIS drawline i=%d\n", i);
     }
     return SUCCESS;
 }
 
-// tp_pagina* initBuffer(unsigned int id){
-//     tp_pagina *buffer = uffslloc(sizeof(tp_pagina));
 
-//     if (buffer == NULL) {
-//         printf("ERROR: Memory allocation failed.\n\n");
-//         return NULL;
-//     }
-
-//     buffer->id = id;
-//     return buffer;
-// }
-
-// tem que inicializar a página também (era o antigo initBuffer)
+// tem que inicializar a página  
 tp_pagina *initPagina(unsigned int id)
 {
     tp_pagina *pagina = uffslloc(sizeof(tp_pagina));
@@ -76,14 +50,12 @@ tp_pagina *initPagina(unsigned int id)
         return NULL;
     }
     pagina->id = id;
-    // inicializando esses também:
     pagina->nrec = 0;
     pagina->position = 0;
 
     return pagina;
 }
 
-// passando qtd_paginas pois o professor disse para passar a quantidade de páginar que o buffer pool é pra ter
 void initBufferPool(int qtd_paginas)
 {
     if (qtd_paginas > PAGES)
@@ -102,6 +74,7 @@ void initBufferPool(int qtd_paginas)
         bp.header[i].bloco_da_tabela = -1;
         bp.header[i].db = 0;
         bp.header[i].pc = 0;
+        bp.hash_directory[i].buffer_id = HASHNULL;
     }
 }
 
@@ -117,7 +90,6 @@ tp_pagina *getBlock(unsigned int id, char *filename)
 {
     // TODO: change how the file is handled; repeatedly opening and closing it is inefficient (não é top)
     FILE *fd = fopen(filename, "r+"); // abre o arquivo da tabela
-    // pergunta: não tem que fechar o arquivo depois? Ou ele já é fechado em algum outro lugar?
 
     if (!fd)
     {
@@ -128,18 +100,15 @@ tp_pagina *getBlock(unsigned int id, char *filename)
     long int pos = (long int)id * sizeof(tp_pagina); // se quiser o primeiro bloco do arquivo, id = 0, se quiser o segundo bloco do arquivo, id = 1, e assim por diante
     fseek(fd, pos, SEEK_SET);                        // pula pra posição do bloco id
     tp_pagina *pagina = uffslloc(sizeof(tp_pagina));
-    fread(pagina, sizeof(tp_pagina), 1, fd); // lê os bytes do disco
-    // printf("READ: pagina->id=%d nrec=%d position=%d\n", pagina->id, pagina->nrec, pagina->position);
-    fclose(fd);    // tem que fechar arquivo (modifiquei)
+    fread(pagina, sizeof(tp_pagina), 1, fd); 
+
+    fclose(fd);    
     return pagina; // retorna os bytes do bloco
 }
 
 // RETORNA PAGINA DO BUFFER
 PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
 {
-    // printf("getpage: page=%d PAGES=%d\n", page, PAGES);
-
-    // if (page >= PAGES || page < 0) return ERRO_PAGINA_INVALIDA;//isso aqui me fez raiva, fazia com que, após a troca de páginas para inserção de um novo bloco na página, a tabela (se fosse uma tabela em todas as páginas) não fosse impressa após a troca de página. Claro, pq num_page é o p em handleTable... e quando tem troca de páginas ele aumenta, mas é no sentido de saber a qtd de trocas (se num_page é 4 e PAGES é 3, sei que houve 1 troca de páginas)
 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
@@ -147,13 +116,12 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
 
     // tp_pagina *pagina = getBlock((unsigned int)page, directory);
     tp_pagina *pagina = bm_getBlock(objeto.cod, page, directory);
-    printf("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
+    DEBUG_PRINT("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
 
     if (pagina == NULL || pagina == ERRO_PARAMETRO)
         return ERRO_PARAMETRO;
 
-    bm_despinarPagina(pagina); // tava dando loop infinito nos selects que faziam select de uma tabela que não cabia inteira dentro do buffer pool
-    // getPage só lê a página pra copiar os dados pro PageResult, então não precisa mais segurar o pin depois daqui 
+    bm_despinarPagina(pagina);
 
     tupla *tuplas = (tupla *)uffslloc(sizeof(tupla) * (pagina->nrec)); // Aloca a quantidade de tuplas necessária
 
@@ -206,7 +174,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     pg->tuplas = tuplas;
     pg->nrec = indiceTupla;
 
-    printf("getPage: bloco %d da tabela '%s' tem %d tupla(s)\n", page, objeto.nome, indiceTupla);
+    DEBUG_PRINT("getPage: bloco %d da tabela '%s' tem %d tupla(s)\n", page, objeto.nome, indiceTupla);
 
     return pg; // Retorna a 'page' do buffer
 }
@@ -364,9 +332,7 @@ int writeBufferToDisk(tp_pagina *pagina, struct fs_objects *objeto)
         return 0;
     }
 
-    // seek(dados, pagina->id *sizeof(tp_pagina), SEEK_SET);
     fseek(dados, pagina->id * sizeof(tp_pagina), SEEK_SET);
-    // printf("WRITE: pagina->id=%d nrec=%d position=%d\n", pagina->id,pagina->nrec,pagina->position);
 
     fwrite(pagina, sizeof(tp_pagina), 1, dados);
     fclose(dados);

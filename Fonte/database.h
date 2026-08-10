@@ -1,3 +1,5 @@
+#pragma once
+
 /* createDB: Recebe um nome para criar um banco de dados
  *           cria o banco, caso ainda não exista
  */

@@ -3,9 +3,7 @@
 #include <string.h>
 
 #include "memoryContext.h"
-#ifndef FUTILITY
-   #include "Utility.h"
-#endif
+#include "Utility.h"
 
 Nodo *novoNodo(void *inf){
   Nodo *novo = uffslloc(sizeof(Nodo));

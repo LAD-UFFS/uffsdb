@@ -1,11 +1,8 @@
-#define FSQLCOMMANDS 1   // flag para garantir a não reinclusão
-#ifndef FMACROS // garante que macros.h não seja reincluída
-   #include "macros.h"
-#endif
-///
-#ifndef FTYPES // garante que types.h não seja reincluída
-  #include "types.h"
-#endif
+#pragma once
+
+#include "macros.h"
+#include "types.h"
+
 /* insert: Recebe uma estrutura rc_insert e valida os tokens encontrados pela interface().
  *         Se os valores forem válidos, insere um novo valor.
  */

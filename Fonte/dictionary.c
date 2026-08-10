@@ -2,30 +2,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+
 #include "memoryContext.h"
-#ifndef FBTREE // includes only if this flag is not defined (preventing duplication)
 #include "btree.h"
-#endif
-
-#ifndef FMACROS // garante que macros.h não seja reincluída
 #include "macros.h"
-#endif
-///
-#ifndef FTYPES // garante que types.h não seja reincluída
 #include "types.h"
-#endif
-////
-#ifndef FMISC // garante que misc.h não seja reincluída
 #include "misc.h"
-#endif
-
-#ifndef FSQLCOMMANDS // garante que sqlcommands.h não seja reincluída
 #include "sqlcommands.h"
-#endif
-
-#ifndef FBUFFER // garante que buffer.h não seja reincluída
 #include "buffer.h"
-#endif
+
 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Verificação de existência de um arquivo.

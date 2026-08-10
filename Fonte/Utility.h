@@ -1,4 +1,4 @@
-#define FUTILITY 1
+#pragma once
 
 typedef struct Nodo{
   void *inf;
