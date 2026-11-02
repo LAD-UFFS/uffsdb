@@ -881,7 +881,7 @@ int validaColsWhere(Lista *tok, tp_table *colunas, int qtdColunas)
                 achou = (strcmp(str, colunas[j].nome) == 0);
             if (!achou)
             {
-                printf("A coluna %s não pertene a tabela.\n", str);
+                printf("A coluna %s não pertence a tabela.\n", str);
                 return 0;
             }
         }
