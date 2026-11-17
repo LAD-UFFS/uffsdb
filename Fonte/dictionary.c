@@ -824,14 +824,21 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
     }
 
     // comentamos isso:
-    // int nTam = (tipo == 'S') ? tam : strlen(valorCampo); // é uma string? se sim, recebe tam; se não, usa o tamanho real digitado
+    //  No caso de CHAR, nTam ficava sem valor antes da alocação.
+    // Usamos o comprimento do texto para reservar espaço para a cópia.
+
+    n = strlen(valorCampo);
+
+    if (tipo == 'C')
+    {
+        nTam = n;
+    }
 
     e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam + 1));
     if (e->valorCampo == NULL)
     {
         return ERRO_DE_ALOCACAO;
     }
-    n = strlen(valorCampo);
     if (tipo == 'S' && n > tam)
     {
         n = tam;
