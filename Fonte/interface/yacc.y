@@ -50,7 +50,7 @@ int yywrap() {
         CLEAR       CONTR       WHERE       OPERADOR    RELACIONAL
         LOGICO      ASTERISCO   SINAL       FECHA_P     ABRE_P
         STRING      INDEX       ON          IMPLEMENT   HISTORY 
-        DELETE      DELETE_HISTORY  UPDATE  SET;
+        DELETE      DELETE_HISTORY  UPDATE  SET         FOREIGN;
 %%
 start: insert | select | delete | update | create_table | create_database | drop_table | drop_database
      | table_attr | list_tables | connection | exit_program | semicolon {GLOBAL_PARSER.consoleFlag = 1; return 0;}
@@ -151,11 +151,27 @@ value: VALUE {setValueInsert(yylval.strval, 'D');}
 
 /* CREATE TABLE */
 create_table: CREATE TABLE {setMode(OP_CREATE_TABLE);} table parentesis_open table_column_attr parentesis_close semicolon {
+    if (!applyForeignKeys()) {
+        GLOBAL_PARSER.noerror = 0;
+    }
     GLOBAL_DATA.N = GLOBAL_PARSER.col_count;
     return 0;
 };
 
-table_column_attr: column_create type attribute | column_create type attribute ',' table_column_attr;
+table_column_attr: table_element | table_element ',' table_column_attr;
+
+table_element: column_create type attribute
+             | foreign_key;
+
+foreign_key: FOREIGN KEY ABRE_P fk_source_column FECHA_P REFERENCES fk_target_table ABRE_P fk_target_column FECHA_P {
+    addForeignKeySeparate();
+};
+
+fk_source_column: OBJECT {setFKSourceColumn(yytext);};
+
+fk_target_table: OBJECT {setFKTableCreate(yytext);};
+
+fk_target_column: OBJECT {setFKColumnCreate(yytext);};
 
 type: INTEGER {setColumnTypeCreate('I');}
     | VARCHAR {setColumnTypeCreate('S');} parentesis_open NUMBER {setColumnSizeCreate(yylval.strval);} parentesis_close
@@ -166,7 +182,8 @@ column_create: OBJECT {setColumnCreate(yytext);};
 
 attribute: /*optional*/
          | PRIMARY KEY {setColumnPKCreate();}
-         | REFERENCES table_fk ABRE_P column_fk FECHA_P;
+         | REFERENCES table_fk ABRE_P column_fk FECHA_P
+         | FOREIGN KEY REFERENCES table_fk ABRE_P column_fk FECHA_P;
 
 table_fk: OBJECT {setColumnFKTableCreate(yytext);};
 

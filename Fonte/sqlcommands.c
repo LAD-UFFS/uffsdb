@@ -952,7 +952,7 @@ void printConsulta(Lista *proj, Lista *result)
         }
         printf("\n");
     }
-    printf("\n %d Linha%s.\n", result->tam, result->tam == 1 ? "" : "s");
+    printf("\n %d Row%s.\n", result->tam, result->tam == 1 ? "" : "s");
     bm_printHeaderBufferPool();
 }
 

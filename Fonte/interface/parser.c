@@ -211,6 +211,78 @@ void setColumnFKColumnCreate(char **nome) {
     GLOBAL_PARSER.step++;
 }
 
+typedef struct fk_separate {
+    char *sourceColumn;
+    char *fkTable;
+    char *fkColumn;
+    struct fk_separate *next;
+} fk_separate;
+
+static fk_separate *fk_separate_list = NULL;
+static char *current_fk_source = NULL;
+static char *current_fk_table = NULL;
+static char *current_fk_column = NULL;
+
+void setFKSourceColumn(char **nome) {
+    current_fk_source = uffslloc(sizeof(char) * (strlen(*nome) + 1));
+    strcpylower(current_fk_source, *nome);
+    current_fk_source[strlen(*nome)] = '\0';
+}
+
+void setFKTableCreate(char **nome) {
+    current_fk_table = uffslloc(sizeof(char) * (strlen(*nome) + 1));
+    strcpylower(current_fk_table, *nome);
+    current_fk_table[strlen(*nome)] = '\0';
+}
+
+void setFKColumnCreate(char **nome) {
+    current_fk_column = uffslloc(sizeof(char) * (strlen(*nome) + 1));
+    strcpylower(current_fk_column, *nome);
+    current_fk_column[strlen(*nome)] = '\0';
+}
+
+void addForeignKeySeparate() {
+    if (!current_fk_source || !current_fk_table || !current_fk_column) return;
+    fk_separate *item = (fk_separate *)uffslloc(sizeof(fk_separate));
+    item->sourceColumn = current_fk_source;
+    item->fkTable = current_fk_table;
+    item->fkColumn = current_fk_column;
+    item->next = fk_separate_list;
+    fk_separate_list = item;
+    current_fk_source = NULL;
+    current_fk_table = NULL;
+    current_fk_column = NULL;
+}
+
+int applyForeignKeys() {
+    fk_separate *curr = fk_separate_list;
+    while (curr) {
+        int found = 0;
+        int i;
+        for (i = 0; i < GLOBAL_PARSER.col_count; i++) {
+            if (strcmp(GLOBAL_DATA.columnName[i], curr->sourceColumn) == 0) {
+                found = 1;
+                GLOBAL_DATA.fkTable[i] = uffsRealloc(GLOBAL_DATA.fkTable[i], sizeof(char) * (strlen(curr->fkTable) + 1));
+                strcpylower(GLOBAL_DATA.fkTable[i], curr->fkTable);
+                GLOBAL_DATA.fkTable[i][strlen(curr->fkTable)] = '\0';
+
+                GLOBAL_DATA.fkColumn[i] = uffsRealloc(GLOBAL_DATA.fkColumn[i], sizeof(char) * (strlen(curr->fkColumn) + 1));
+                strcpylower(GLOBAL_DATA.fkColumn[i], curr->fkColumn);
+                GLOBAL_DATA.fkColumn[i][strlen(curr->fkColumn)] = '\0';
+
+                GLOBAL_DATA.attribute[i] = FK;
+                break;
+            }
+        }
+        if (!found) {
+            printf("ERROR: column \"%s\" referenced in foreign key constraint does not exist.\n", curr->sourceColumn);
+            return 0;
+        }
+        curr = curr->next;
+    }
+    return 1;
+}
+
 void limparLista(Lista *l){
   Nodo *k = l->prim,*j;
   while(k){
@@ -238,6 +310,11 @@ void resetQuery() {
 }
 
 void clearGlobalStructs() {
+    fk_separate_list = NULL;
+    current_fk_source = NULL;
+    current_fk_table = NULL;
+    current_fk_column = NULL;
+
     resetQuery();
     if (GLOBAL_DATA.objName) {
         GLOBAL_DATA.objName = NULL;
