@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -14,6 +15,19 @@
 #include "../sqlcommands.h"
 #include "../bufferManager.h"
 #include "parser.h"
+
+volatile sig_atomic_t interrompido = 0;
+
+void handle_sigint(int sig) {
+    interrompido = 1;
+}
+
+int verificarInterrupcao() {
+    if (interrompido) {
+        rl_done = 1;
+    }
+    return 0;
+}
 
 /* Estrutura global que guarda as informações obtidas pelo yacc
  * na identificação dos tokens
@@ -277,6 +291,14 @@ int interface() {
     pthread_create(&pth, NULL, (void*)clearGlobalStructs, NULL);
     pthread_join(pth, NULL);
 
+    struct sigaction sa = {0};
+    sa.sa_handler = handle_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+    rl_catch_signals = 0;
+    rl_event_hook = verificarInterrupcao;
+
     char prompt[LEN_DB_NAME + 4]; // 3 para "=# " +1 para \0
     Lista *resultado;
     connect("uffsdb"); // conecta automaticamente no banco padrão
@@ -290,7 +312,10 @@ int interface() {
         }
         fflush(stdout);
         char *input = readline(prompt); 
-        if(!input) break;
+        if(interrompido || !input) {
+            free(input);
+            quit(0);
+        }
         
         if(!(*input)) continue;
         getComando(input);
