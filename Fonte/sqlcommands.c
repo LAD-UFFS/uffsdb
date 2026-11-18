@@ -16,6 +16,20 @@
 #include "Expressao.h"
 #include "bufferManager.h"
 
+
+/*
+Verifica integer overflow em campos INT
+É usada em Insert() pra ativar a flag que barra a inserção no banco
+*/
+static int integerValueOutOfRange(const char *value)
+{
+    char *endptr;
+    errno = 0;
+    long parsed = strtol(value, &endptr, 10);
+
+    return errno == ERANGE || parsed < INT32_MIN || parsed > INT32_MAX;
+}
+
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Recebe o nome de uma tabela e engloba as funções leObjeto() e leSchema().
     Parametros: Nome da Tabela, Objeto da Tabela e tabela.
@@ -714,7 +728,12 @@ void insert(rc_insert *s_insert)
                 if (typesCompatible(esquema->tipo, getInsertedType(s_insert, esquema->nome, tabela)))
                 {
                     char *valor = getInsertedValue(s_insert, esquema->nome, tabela);
-                    if (esquema->tipo == 'S' && valor != NULL && valor != COLUNA_NULL && (int)strlen(valor) > esquema->tam)
+                    if (esquema->tipo == 'I' && valor != NULL && valor != COLUNA_NULL && integerValueOutOfRange(valor))
+                    {
+                        printf("ERROR: integer value out of range for column \"%s\" (expected: %d to %d).\n", esquema->nome, INT32_MIN, INT32_MAX);
+                        flag = 1;
+                    }
+                    else if (esquema->tipo == 'S' && valor != NULL && valor != COLUNA_NULL && (int)strlen(valor) > esquema->tam)
                     {
                         printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", esquema->nome, esquema->tam, (int)strlen(valor));
                         flag = 1;
@@ -755,7 +774,13 @@ void insert(rc_insert *s_insert)
                 }
 
                 if (s_insert->type[i] == tabela->esquema[i].tipo)
-                    if (tabela->esquema[i].tipo == 'S' && s_insert->values[i] != NULL && s_insert->values[i] != COLUNA_NULL && (int)strlen(s_insert->values[i]) > tabela->esquema[i].tam)
+                {
+                    if (tabela->esquema[i].tipo == 'I' && s_insert->values[i] != NULL && s_insert->values[i] != COLUNA_NULL && integerValueOutOfRange(s_insert->values[i]))
+                    {
+                        printf("ERROR: integer value out of range for column \"%s\" (expected: %d to %d).\n", tabela->esquema[i].nome, INT32_MIN, INT32_MAX);
+                        flag = 1;
+                    }
+                    else if (tabela->esquema[i].tipo == 'S' && s_insert->values[i] != NULL && s_insert->values[i] != COLUNA_NULL && (int)strlen(s_insert->values[i]) > tabela->esquema[i].tam)
                     {
                         printf("ERROR: value too long for column \"%s\" (max: %d, received: %d).\n", tabela->esquema[i].nome, tabela->esquema[i].tam, (int)strlen(s_insert->values[i]));
                         flag = 1;
@@ -764,6 +789,7 @@ void insert(rc_insert *s_insert)
                     {
                         colunas = insereValor(tabela, colunas, tabela->esquema[i].nome, s_insert->values[i]);
                     }
+                }
                 else
                 {
                     printf("ERROR: data type invalid to column '%s' of relation '%s' (expected: %c, received: %c).\n", tabela->esquema[i].nome, tabela->nome, tabela->esquema[i].tipo, s_insert->type[i]);
