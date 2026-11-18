@@ -1,8 +1,9 @@
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-
+ 
 #include "memoryContext.h"
 #include "btree.h"
 #include "macros.h"
@@ -10,29 +11,29 @@
 #include "misc.h"
 #include "sqlcommands.h"
 #include "buffer.h"
-
-
+ 
+ 
 /* ----------------------------------------------------------------------------------------------
     Objetivo:   Verificação de existência de um arquivo.
     Parametros: Nome do arquivo.
     Retorno:    INT 1 (existe) , 0 (não existe).
    ---------------------------------------------------------------------------------------------*/
-
+ 
 int existeArquivo(const char *filename)
 {
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, filename);
     FILE *fptr = fopen(directory, "r");
-
+ 
     if (fptr != NULL)
     {
         fclose(fptr);
-
+ 
         return 1;
     }
-
+ 
     return 0;
 }
 /* ----------------------------------------------------------------------------------------------
@@ -42,7 +43,7 @@ int existeArquivo(const char *filename)
                 SUCCESS,
                 ERRO_DE_PARAMETRO
    ---------------------------------------------------------------------------------------------*/
-
+ 
 int existeAtributo(char *nomeTabela, column *c)
 {
     int x, count;
@@ -51,18 +52,18 @@ int existeAtributo(char *nomeTabela, column *c)
     tp_table *tabela;
     column *aux = NULL;
     PageResult *pagina = NULL;
-
+ 
     if (iniciaAtributos(&objeto, &tabela, nomeTabela) != SUCCESS)
         return ERRO_DE_PARAMETRO;
-
+ 
     // TODO: PAGINA não é necessária aqui
     pagina = getPage(tabela, objeto, 0);
-
+ 
     if (pagina == NULL)
     {
         pagina = getPage(tabela, objeto, 1);
     }
-
+ 
     if (pagina != NULL)
     {
         count = 0;
@@ -83,7 +84,7 @@ int existeAtributo(char *nomeTabela, column *c)
             return ERRO_DE_PARAMETRO;
         }
     }
-
+ 
     return SUCCESS;
 }
 //////
@@ -91,39 +92,39 @@ int verificaNomeTabela(char *nomeTabela)
 {
     if (strlen(nomeTabela) > TAMANHO_NOME_TABELA)
         return 0;
-
+ 
     FILE *dicionario;
     char *tupla = (char *)uffslloc(sizeof(char) * TAMANHO_NOME_TABELA);
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     if ((dicionario = fopen(directory, "a+b")) == NULL)
     {
         return ERRO_ABRIR_ARQUIVO;
     }
-
+ 
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, -1, 1);
-
+ 
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario); // Lê somente o nome da tabela
-
+ 
         if (objcmp(tupla, nomeTabela) == 0)
         { // Verifica se o nome dado pelo usuario existe no dicionario de dados.
             fclose(dicionario);
             return 1;
         }
-
+ 
         fseek(dicionario, 34, 1);
     }
-
+ 
     fclose(dicionario);
-
+ 
     return 0;
 }
-
+ 
 void updateSchema(struct fs_objects *objeto)
 {
     char directory[LEN_DB_NAME_IO];
@@ -135,12 +136,12 @@ void updateSchema(struct fs_objects *objeto)
         printf("ERROR: Unable to open file for writing.\n");
         return;
     }
-
+ 
     int codTbl;
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, TAMANHO_NOME_TABELA - 1, SEEK_CUR); // 20 + (-1)
-
+ 
         // fwrite(&t->nome,sizeof(t->nome),1,dicionario);
         fread(&codTbl, sizeof(codTbl), 1, dicionario);
         if (codTbl == objeto->cod)
@@ -157,38 +158,71 @@ void updateSchema(struct fs_objects *objeto)
         }
         fseek(dicionario, TAMANHO_NOME_ARQUIVO + 10, SEEK_CUR);
     }
-
+ 
     fclose(dicionario);
 }
-
+ 
 ////
 int quantidadeTabelas()
 {
-
+ 
     FILE *dicionario;
     int codTbl = 0;
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     if ((dicionario = fopen(directory, "a+b")) == NULL)
         return ERRO_ABRIR_ARQUIVO;
-
+ 
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, -1, 1);
-
+ 
         codTbl++; // Conta quantas vezes é lido uma tupla no dicionario.
-
+ 
         fseek(dicionario, 54, 1);
     }
-
+ 
     fclose(dicionario);
-
+ 
     return codTbl;
 }
-
+ 
+/* ----------------------------------------------------------------------------------------------
+    Objetivo:   Retorna um código de tabela que ainda não está em uso no fs_object.dat.
+                Usar quantidadeTabelas()+1 gera códigos repetidos depois de um DROP TABLE,
+                e o updateSchema() acaba gravando o ultimoBlocoComDados no registro da tabela errada.
+    Retorno:    maior código existente + 1 (1 se não houver tabelas), ou ERRO_ABRIR_ARQUIVO.
+   ---------------------------------------------------------------------------------------------*/
+int proximoCodigoTabela()
+{
+    FILE *dicionario;
+    int maior = 0, cod;
+ 
+    char directory[LEN_DB_NAME_IO];
+    strcpy(directory, connected.db_directory);
+    strcat(directory, "fs_object.dat");
+ 
+    if ((dicionario = fopen(directory, "a+b")) == NULL)
+        return ERRO_ABRIR_ARQUIVO;
+ 
+    rewind(dicionario);
+    // registro = 20B nome + 4B cod + 20B arquivo + 4B qtdCampos + 4B qtdIndice + 2B ultimoBlocoComDados = 54B
+    while (fseek(dicionario, TAMANHO_NOME_TABELA, SEEK_CUR) == 0 &&
+           fread(&cod, sizeof(int), 1, dicionario) == 1)
+    {
+        if (cod > maior)
+            maior = cod;
+        if (fseek(dicionario, 30, SEEK_CUR) != 0)
+            break;
+    }
+ 
+    fclose(dicionario);
+    return maior + 1;
+}
+ 
 ////
 int retornaTamanhoValorCampo(char *nomeCampo, table *tab)
 {
@@ -205,7 +239,7 @@ int retornaTamanhoValorCampo(char *nomeCampo, table *tab)
     }
     return 0;
 }
-
+ 
 ////
 char retornaTamanhoTipoDoCampo(char *nomeCampo, table *tab)
 {
@@ -225,7 +259,7 @@ char retornaTamanhoTipoDoCampo(char *nomeCampo, table *tab)
     Parametros: Objeto da tabela.
     Retorno:    Vetor de esquemas vetEsqm
    ---------------------------------------------------------------------------------------------*/
-
+ 
 tp_table *procuraAtributoFK(struct fs_objects objeto)
 {
     FILE *schema;
@@ -235,28 +269,28 @@ tp_table *procuraAtributoFK(struct fs_objects objeto)
     tp_table *vetEsqm = (tp_table *)uffslloc(sizeof(tp_table) * objeto.qtdCampos);
     memset(vetEsqm, 0, sizeof(tp_table) * objeto.qtdCampos);
     memset(esquema, 0, sizeof(tp_table) * objeto.qtdCampos);
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
-
+ 
     if ((schema = fopen(directory, "a+b")) == NULL)
     {
         printf("ERROR: could not read schema.\n");
         return ERRO_ABRIR_ESQUEMA;
     }
-
+ 
     while ((fgetc(schema) != EOF) && i < objeto.qtdCampos)
     { // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
         fseek(schema, -1, 1);
-
+ 
         if (fread(&cod, sizeof(int), 1, schema))
         { // Le o codigo da tabela.
             if (cod == objeto.cod)
             {
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
                 strcpylower(esquema[i].nome, tupla); // Copia dados do campo para o esquema.
-
+ 
                 fread(&esquema[i].tipo, sizeof(char), 1, schema);
                 fread(&esquema[i].tam, sizeof(int), 1, schema);
                 fread(&chave, sizeof(int), 1, schema);
@@ -264,15 +298,15 @@ tp_table *procuraAtributoFK(struct fs_objects objeto)
                 vetEsqm[i].tam = esquema[i].tam;
                 fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, schema);
                 strcpylower(esquema[i].tabelaApt, tupla);
-
+ 
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
                 strcpylower(esquema[i].attApt, tupla);
-
+ 
                 strcpylower(vetEsqm[i].tabelaApt, esquema[i].tabelaApt);
                 strcpylower(vetEsqm[i].attApt, esquema[i].attApt);
                 strcpylower(vetEsqm[i].nome, esquema[i].nome);
                 vetEsqm[i].chave = chave;
-
+ 
                 i++;
             }
             else
@@ -282,10 +316,10 @@ tp_table *procuraAtributoFK(struct fs_objects objeto)
         }
     }
     fclose(schema);
-
+ 
     return vetEsqm;
 }
-
+ 
 struct fs_objects leObjetoById(int idTabela)
 {
     FILE *dicionario;
@@ -293,34 +327,34 @@ struct fs_objects leObjetoById(int idTabela)
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int cod, qtdCampos, qtdIndice;
     int16_t ultimoBlocoComDados;
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     dicionario = fopen(directory, "a+b"); // Abre o dicionario de dados.
-
+ 
     struct fs_objects objeto;
-
+ 
     if (dicionario == NULL)
     {
         printf("ERROR: data dictionary was not found.\n\n");
         return objeto;
     }
-
+ 
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, -1, 1);
-
+ 
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario); // Lê somente o nome da tabela
         strcpylower(objeto.nome, tupla);
-
+ 
         fread(&cod, sizeof(int), 1, dicionario); // Copia valores referentes a tabela pesquisada para a estrutura.
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario);
         fread(&qtdCampos, sizeof(int), 1, dicionario);
         fread(&qtdIndice, sizeof(int), 1, dicionario);
         fread(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
-
+ 
         if (cod == idTabela)
         { // Verifica se o nome dado pelo usuario existe no dicionario de dados.
             strcpylower(objeto.nArquivo, tupla);
@@ -328,54 +362,54 @@ struct fs_objects leObjetoById(int idTabela)
             objeto.qtdCampos = qtdCampos;
             objeto.qtdIndice = qtdIndice;
             objeto.ultimoBlocoComDados = ultimoBlocoComDados;
-
+ 
             fclose(dicionario);
             return objeto;
         }
     }
     fclose(dicionario);
-
+ 
     return objeto;
 }
-
+ 
 struct fs_objects leObjeto(char *nomeTabela)
 {
-
+ 
     FILE *dicionario;
     char *tupla = (char *)uffslloc(sizeof(char) * TAMANHO_NOME_TABELA);
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int cod;
     int i = 0;
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     dicionario = fopen(directory, "a+b"); // Abre o dicionario de dados.
-
+ 
     struct fs_objects objeto;
-
+ 
     if (!verificaNomeTabela(nomeTabela))
     {
         printf("ERROR: relation \"%s\" was not found.\n", nomeTabela);
         if (dicionario)
             fclose(dicionario);
-
+ 
         return objeto;
     }
-
+ 
     if (dicionario == NULL)
     {
         printf("ERROR: data dictionary was not found.\n\n");
         return objeto;
     }
-
+ 
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, -1, 1);
-
+ 
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario); // Lê somente o nome da tabela
-
+ 
         if (objcmp(tupla, nomeTabela) == 0)
         { // Verifica se o nome dado pelo usuario existe no dicionario de dados.
             strcpylower(objeto.nome, tupla);
@@ -387,7 +421,7 @@ struct fs_objects leObjeto(char *nomeTabela)
             objeto.qtdCampos = cod;
             fread(&i, sizeof(int), 1, dicionario);
             objeto.qtdIndice = i;
-
+ 
             int16_t n;
             fread(&n, 2, 1, dicionario);
             objeto.ultimoBlocoComDados = n;
@@ -397,10 +431,10 @@ struct fs_objects leObjeto(char *nomeTabela)
         fseek(dicionario, 34, 1); // Pula a quantidade de caracteres para a proxima verificacao(4B do codigo, 20B do nome do arquivo e 4B da quantidade de campos).
     }
     fclose(dicionario);
-
+ 
     return objeto;
 }
-
+ 
 //
 // LEITURA DE DICIONARIO E ESQUEMA
 tp_table *leSchema(struct fs_objects objeto)
@@ -411,51 +445,51 @@ tp_table *leSchema(struct fs_objects objeto)
     memset(tupla, 0, TAMANHO_NOME_CAMPO);
     char *tuplaT = (char *)uffslloc(sizeof(char) * TAMANHO_NOME_TABELA + 1);
     memset(tuplaT, 0, TAMANHO_NOME_TABELA + 1);
-
+ 
     tp_table *esquema = (tp_table *)uffslloc(sizeof(tp_table) * (objeto.qtdCampos + 1)); // Aloca esquema com a quantidade de campos necessarios.
     memset(esquema, 0, (objeto.qtdCampos + 1) * sizeof(tp_table));
     for (i = 0; i < objeto.qtdCampos + 1; i++)
         esquema[i].next = NULL;
-
+ 
     i = 0;
     if (esquema == NULL)
     {
-
+ 
         return ERRO_DE_ALOCACAO;
     }
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
-
+ 
     schema = fopen(directory, "a+b"); // Abre o arquivo de esquemas de tabelas.
-
+ 
     if (schema == NULL)
     {
         return ERRO_ABRIR_ESQUEMA;
     }
-
+ 
     while ((fgetc(schema) != EOF) && (i < objeto.qtdCampos))
     { // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
         fseek(schema, -1, 1);
-
+ 
         if (fread(&cod, sizeof(int), 1, schema))
         { // Le o codigo da tabela.
             if (cod == objeto.cod)
             { // Verifica se o campo a ser copiado e da tabela que esta na estrutura fs_objects.
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
                 strcpylower(esquema[i].nome, tupla); // Copia dados do campo para o esquema.
-
+ 
                 fread(&esquema[i].tipo, sizeof(char), 1, schema);
                 fread(&esquema[i].tam, sizeof(int), 1, schema);
                 fread(&esquema[i].chave, sizeof(int), 1, schema);
-
+ 
                 fread(tuplaT, sizeof(char), TAMANHO_NOME_TABELA, schema);
                 strcpylower(esquema[i].tabelaApt, tuplaT);
-
+ 
                 fread(tupla, sizeof(char), TAMANHO_NOME_CAMPO, schema);
                 strcpylower(esquema[i].attApt, tupla);
-
+ 
                 if (i > 0)
                     esquema[i - 1].next = &esquema[i];
                 i++;
@@ -467,7 +501,7 @@ tp_table *leSchema(struct fs_objects objeto)
         }
     }
     esquema[i].next = NULL;
-
+ 
     fclose(schema);
     return esquema;
 }
@@ -478,43 +512,43 @@ tp_table *leSchema(struct fs_objects objeto)
                 SUCCESS,
                 ERRO_ABRIR_ARQUIVO
    ---------------------------------------------------------------------------------------------*/
-
+ 
 int procuraObjectArquivo(char *nomeTabela)
 {
-
+ 
     int teste = 0,
         cont = 0,
         achou = 0,
         tamanhoTotal = 54;
-
+ 
     char *table = (char *)uffslloc(sizeof(char) * tamanhoTotal);
     FILE *dicionario, *fp;
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     if ((dicionario = fopen(directory, "a+b")) == NULL)
     {
         return ERRO_ABRIR_ARQUIVO;
     }
-
+ 
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_nobject.dat");
-
+ 
     if ((fp = fopen(directory, "a+b")) == NULL)
     {
         return ERRO_ABRIR_ARQUIVO;
     }
-
+ 
     fseek(dicionario, 0, SEEK_SET);
     fseek(fp, 0, SEEK_SET);
-
+ 
     while (cont < quantidadeTabelas())
     {
         fread(table, sizeof(char), tamanhoTotal, dicionario);
         teste = TrocaArquivosObj(nomeTabela, table);
-
+ 
         if (teste == 0)
         { // NÃO É IGUAL
             fseek(fp, 0, SEEK_END);
@@ -527,56 +561,56 @@ int procuraObjectArquivo(char *nomeTabela)
         }
         cont++;
     }
-
+ 
     fclose(fp);
     fclose(dicionario);
-
+ 
     char directoryex[LEN_DB_NAME_IO * 2];
     strcpy(directoryex, connected.db_directory);
     strcat(directoryex, "fs_object.dat");
-
+ 
     remove(directoryex);
-
+ 
     strcpy(directoryex, "mv ");
     strcat(directoryex, connected.db_directory);
     strcat(directoryex, "fs_nobject.dat ");
     strcat(directoryex, connected.db_directory);
     strcat(directoryex, "fs_object.dat");
-
+ 
     system(directoryex);
-
+ 
     return SUCCESS;
 }
 //
 int tamTupla(tp_table *esquema, struct fs_objects objeto)
 { // Retorna o tamanho total da tupla da tabela.
-
+ 
     int qtdCampos = objeto.qtdCampos, i, tamanhoGeral = qtdCampos + 1; // tamanho do cabeçalho
-
+ 
     if (qtdCampos)
     { // Lê o primeiro inteiro que representa a quantidade de campos da tabela.
         for (i = 0; i < qtdCampos; i++)
             tamanhoGeral += esquema[i].tam; // Soma os tamanhos de cada campo da tabela.
     }
-
+ 
     return tamanhoGeral;
 }
 ////
-
+ 
 int tamTuplaSemByteControle(tp_table *esquema, struct fs_objects objeto)
 { // Retorna o tamanho total da tupla da tabela.
-
+ 
     int qtdCampos = objeto.qtdCampos, i, tamanhoGeral = 0;
-
+ 
     if (qtdCampos)
     { // Lê o primeiro inteiro que representa a quantidade de campos da tabela.
         for (i = 0; i < qtdCampos; i++)
             tamanhoGeral += esquema[i].tam; // Soma os tamanhos de cada campo da tabela.
     }
-
+ 
     return tamanhoGeral;
 }
-
+ 
 tp_table *verificaIntegridade(char *nTabela)
 {
     FILE *fp;
@@ -584,16 +618,16 @@ tp_table *verificaIntegridade(char *nTabela)
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
-
+ 
     if ((fp = fopen(directory, "r")) == NULL)
     {
         return (tp_table *)ERRO_ABRIR_ARQUIVO; // TODO: GOMES VAI RESOLVER
     }
-
+ 
     while ((fgetc(fp) != EOF))
     {
         fseek(fp, -1, 1);
-
+ 
         fread(&esquema.id, sizeof(int), 1, fp);
         fread(&esquema.nome, TAMANHO_NOME_CAMPO, 1, fp);
         fread(&esquema.tipo, sizeof(char), 1, fp);
@@ -612,7 +646,7 @@ tp_table *verificaIntegridade(char *nTabela)
     fclose(fp);
     return fkColumns;
 }
-
+ 
 nodo *buildBplusForPK(tp_table *filho)
 { // TODO: RENOMEAR FUNÇÃO
     struct fs_objects tabela = leObjetoById(filho->id);
@@ -620,7 +654,7 @@ nodo *buildBplusForPK(tp_table *filho)
     pkFileName = strcat(tabela.nome, filho->nome);
     return constroi_bplus(pkFileName);
 }
-
+ 
 // CRIA TABELA
 table *iniciaTabela(char *nome)
 {
@@ -628,7 +662,7 @@ table *iniciaTabela(char *nome)
     { // Se o nome já existir no dicionario, retorna erro.
         return ERRO_NOME_TABELA_INVALIDO;
     }
-
+ 
     table *t = (table *)uffslloc(sizeof(table) * 1);
     memset(t, 0, sizeof(table));
     strcpylower(t->nome, nome); // Inicia a estrutura de tabela com o nome da tabela.
@@ -650,23 +684,23 @@ table *adicionaCampo(table *t, char *nomeCampo, char tipoCampo, int tamanhoCampo
         memset(e, 0, sizeof(tp_table));
         if (e == NULL)
             return ERRO_DE_ALOCACAO;
-
+ 
         e->next = NULL;
         int n = strlen(nomeCampo) + 1;
         if (n > TAMANHO_NOME_CAMPO)
             n = TAMANHO_NOME_CAMPO;
-
+ 
         strncpylower(e->nome, nomeCampo, n); // Copia nome do campo passado para o esquema
         e->tipo = tipoCampo;                 // Copia tipo do campo passado para o esquema
         e->tam = tamanhoCampo;               // Copia tamanho do campo passado para o esquema
         e->chave = tChave;                   // Copia tipo de chave passado para o esquema
-
+ 
         if (strlen(tabelaApt) >= 1)
             strcpylower(e->tabelaApt, tabelaApt); // Copia a Tabela Refenciada da FK de chave passado para o esquema;
-
+ 
         if (strlen(attApt) >= 1)
             strcpylower(e->attApt, attApt); // Copia o Atributo Refenciado da FK de chave passado para o esquema
-
+ 
         t->esquema = e;
         return t; // Retorna a estrutura
     }
@@ -684,22 +718,22 @@ table *adicionaCampo(table *t, char *nomeCampo, char tipoCampo, int tamanhoCampo
                 int n = strlen(nomeCampo) + 1;
                 if (n > TAMANHO_NOME_CAMPO)
                     n = TAMANHO_NOME_CAMPO;
-
+ 
                 strncpylower(e->nome, nomeCampo, n); // Copia nome do campo passado para o esquema
                 e->tipo = tipoCampo;                 // Copia tipo do campo passado para o esquema
                 e->tam = tamanhoCampo;               // Copia tamanho do campo passado para o esquema
                 e->chave = tChave;                   // Copia tipo de chave passado para o esquema
-
+ 
                 strcpylower(e->tabelaApt, tabelaApt); // Copia a Tabela Refenciada da FK de chave passado para o esquema;
-
+ 
                 strcpylower(e->attApt, attApt); // Copia o Atributo Refenciado da FK de chave passado para o esquema
-
+ 
                 aux->next = e; // Faz o campo anterior apontar para o campo inserido.
                 return t;
             }
         }
     }
-
+ 
     return t; // Retorna estrutura atualizada.
 }
 ///
@@ -707,24 +741,24 @@ int finalizaTabela(table *t)
 {
     if (t == NULL)
         return ERRO_DE_PARAMETRO;
-
+ 
     FILE *esquema, *dicionario;
     tp_table *aux;
     int qtdIndice = 0;
-    int codTbl = quantidadeTabelas() + 1, qtdCampos = 0; // Conta a quantidade de tabelas já no dicionario e soma 1 no codigo dessa nova tabela.
+    int codTbl = proximoCodigoTabela(), qtdCampos = 0; // Maior codigo ja usado + 1 (quantidadeTabelas()+1 repetia codigos apos DROP TABLE).
     char nomeArquivo[TAMANHO_NOME_ARQUIVO];
     memset(nomeArquivo, 0, TAMANHO_NOME_ARQUIVO);
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
-
+ 
     if ((esquema = fopen(directory, "a+b")) == NULL)
         return ERRO_ABRIR_ARQUIVO;
-
+ 
     for (aux = t->esquema; aux != NULL; aux = aux->next)
     { // Salva novos campos no esquema da tabela, fs_schema.dat
-
+ 
         fwrite(&codTbl, sizeof(codTbl), 1, esquema);                 // Código Tabela
         fwrite(&aux->nome, sizeof(aux->nome), 1, esquema);           // Nome campo
         fwrite(&aux->tipo, sizeof(aux->tipo), 1, esquema);           // Tipo campo
@@ -732,23 +766,23 @@ int finalizaTabela(table *t)
         fwrite(&aux->chave, sizeof(aux->chave), 1, esquema);         // Chave do campo
         fwrite(&aux->tabelaApt, sizeof(aux->tabelaApt), 1, esquema); // Tabela Apontada
         fwrite(&aux->attApt, sizeof(aux->attApt), 1, esquema);       // Atributo apontado.
-
+ 
         if (aux->chave == PK && !qtdIndice)
         {
             qtdIndice++;
         }
-
+ 
         qtdCampos++; // Soma quantidade total de campos inseridos.
     }
-
+ 
     fclose(esquema);
-
+ 
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     if ((dicionario = fopen(directory, "a+b")) == NULL)
         return ERRO_ABRIR_ARQUIVO;
-
+ 
     strcpylower(nomeArquivo, t->nome);
     strcat(nomeArquivo, ".dat\0");
     strcat(t->nome, "\0");
@@ -760,7 +794,7 @@ int finalizaTabela(table *t)
     fwrite(&qtdIndice, sizeof(int), 1, dicionario);
     int16_t ultimoBlocoComDados = -1;
     fwrite(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
-
+ 
     char directoryDataFile[LEN_DB_NAME_IO];
     strcpy(directoryDataFile, connected.db_directory);
     strcat(directoryDataFile, nomeArquivo); // já tem o ".dat" gravado no nArquivo
@@ -777,10 +811,10 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
     if (e == NULL)
         return ERRO_DE_ALOCACAO;
     e->next = NULL;
-
+ 
     int tam = retornaTamanhoValorCampo(nomeCampo, tab);
     char tipo = retornaTamanhoTipoDoCampo(nomeCampo, tab);
-
+ 
     // cd /home/uffs/uffsdb/Fonte && make clean && make 2>&1
     // adicionamos isso:
     int nTam;
@@ -796,7 +830,7 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
         {
             // printf("inteiro");
             long ajuda = (long)strtol(valorCampo, NULL, 10);
-
+ 
             if (ajuda > INT32_MAX)
             { // INT32_MAX é o tamanho limite de 32 bits do C
                 printf("ERROR: The integer exceeded the size limite 32 bits\n");
@@ -804,9 +838,9 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
             nTam = sizeof(ajuda);
         }
     }
-
+ 
     int n = strlen(nomeCampo) + 1;
-
+ 
     /**
      * Verifica se o nome ultrapassa o limite, se sim trunca
      */
@@ -816,16 +850,16 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
         printf("WARNING: field name exceeded the size limit and was truncated.\n");
     }
     strncpylower(e->nomeCampo, nomeCampo, n - 1);
-
+ 
     if (valorCampo == COLUNA_NULL)
     {
         e->valorCampo = COLUNA_NULL;
         goto fim;
     }
-
+ 
     // comentamos isso:
     // int nTam = (tipo == 'S') ? tam : strlen(valorCampo); // é uma string? se sim, recebe tam; se não, usa o tamanho real digitado
-
+ 
     e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam + 1));
     if (e->valorCampo == NULL)
     {
@@ -837,15 +871,15 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
         n = tam;
         printf("WARNING: value of column \"%s\" exceeded the size limit and was truncated.\n", nomeCampo);
     }
-
+ 
     strncpy(e->valorCampo, valorCampo, n);
     e->valorCampo[n] = '\0';
-
+ 
     if (tipo == 'I')
     {
         sprintf(e->valorCampo, "%d", atoi(e->valorCampo));
     }
-
+ 
 fim:
     if (!c)
         return e;
@@ -853,35 +887,35 @@ fim:
     while (aux->next)
         aux = aux->next;
     aux->next = e;
-
+ 
     return c;
 }
 //////
 /*------------------------------------------------------------------------------------------
 Objetivo: Mostrar as tabelas do banco de dados ou, em específico, os atributos de uma tabela
 ------------------------------------------------------------------------------------------*/
-
+ 
 void printTable(char *tbl)
 {
     if (tbl == NULL)
     { // mostra todas as tabelas do banco
         FILE *dicionario;
         printf("		List of Relations\n");
-
+ 
         char directory[LEN_DB_NAME_IO];
         strcpy(directory, connected.db_directory);
         strcat(directory, "fs_object.dat");
-
+ 
         if ((dicionario = fopen(directory, "a+b")) == NULL)
         {
             printf("ERROR: cannot open file\n");
             return;
         }
-
+ 
         printf(" %-10s | %-15s | %-10s | %-10s\n", "Schema", "Name", "Type", "Owner");
         printf("------------+-----------------+------------+-------\n");
         int i = 0;
-
+ 
         // coisas novas
         char nome[TAMANHO_NOME_TABELA + 1];
         int codTbl;
@@ -889,23 +923,23 @@ void printTable(char *tbl)
         int qtdCampos;
         int qtdIndice;
         int16_t ultimoBlocoComDados;
-
+ 
         while (1)
         {
-
+ 
             if (fread(nome, sizeof(char), TAMANHO_NOME_TABELA, dicionario) != TAMANHO_NOME_TABELA)
                 break;
-
+ 
             nome[TAMANHO_NOME_TABELA] = '\0';
-
+ 
             fread(&codTbl, sizeof(int), 1, dicionario);
             fread(nomeArquivo, sizeof(char), TAMANHO_NOME_ARQUIVO, dicionario);
             fread(&qtdCampos, sizeof(int), 1, dicionario);
             fread(&qtdIndice, sizeof(int), 1, dicionario);
             fread(&ultimoBlocoComDados, sizeof(int16_t), 1, dicionario);
-
+ 
             printf(" %-10s | %-15s | %-10s | %-10s \n", "public", nome, "tuple", connected.db_name);
-
+ 
             i++;
         }
         fclose(dicionario);
@@ -913,38 +947,38 @@ void printTable(char *tbl)
     }
     else
     { // mostra todos atributos da tabela *tbl
-
+ 
         if (!verificaNomeTabela(tbl))
         {
             printf("Did not find any relation named \"%s\".\n", tbl);
             return;
         }
-
+ 
         printf("	  Table \"public.%s\"\n", tbl);
         printf(" %-18s | %-12s | %-10s\n", "Column", "Type", "Modifiers");
         printf("--------------------+--------------+-----------\n");
-
+ 
         struct fs_objects objeto1;
         tp_table *esquema1;
-
+ 
         abreTabela(tbl, &objeto1, &esquema1);
-
+ 
         tp_table *tab3 = (tp_table *)uffslloc(sizeof(struct tp_table));
         tab3 = procuraAtributoFK(objeto1); // retorna tp_table
         int l, ipk = 0, ifk = 0, ibt = 0;
-
+ 
         char **pk = (char **)uffslloc(objeto1.qtdCampos * sizeof(char **));
         char **fkTable = (char **)uffslloc(objeto1.qtdCampos * sizeof(char **));
         char **fkColumn = (char **)uffslloc(objeto1.qtdCampos * sizeof(char **));
         char **refColumn = (char **)uffslloc(objeto1.qtdCampos * sizeof(char **));
         char **btIndex = (char **)uffslloc(objeto1.qtdIndice * sizeof(char *));
-
+ 
         memset(pk, 0, objeto1.qtdCampos);
         memset(fkTable, 0, objeto1.qtdCampos);
         memset(fkColumn, 0, objeto1.qtdCampos);
         memset(refColumn, 0, objeto1.qtdCampos);
         memset(btIndex, 0, objeto1.qtdIndice);
-
+ 
         int i;
         for (i = 0; i < objeto1.qtdCampos; i++)
         {
@@ -952,21 +986,21 @@ void printTable(char *tbl)
             fkTable[i] = (char *)uffslloc(TAMANHO_NOME_CAMPO * sizeof(char));
             fkColumn[i] = (char *)uffslloc(TAMANHO_NOME_CAMPO * sizeof(char));
             refColumn[i] = (char *)uffslloc(TAMANHO_NOME_CAMPO * sizeof(char));
-
+ 
             memset(pk[i], '\0', TAMANHO_NOME_CAMPO);
             memset(fkTable[i], '\0', TAMANHO_NOME_CAMPO);
             memset(fkColumn[i], '\0', TAMANHO_NOME_CAMPO);
             memset(refColumn[i], '\0', TAMANHO_NOME_CAMPO);
         }
-
+ 
         for (i = 0; i < objeto1.qtdIndice; i++)
         {
             btIndex[i] = (char *)uffslloc(TAMANHO_NOME_CAMPO * sizeof(char));
         }
-
+ 
         for (l = 0; l < objeto1.qtdCampos; l++)
         {
-
+ 
             if (tab3[l].chave == PK)
             {
                 strcpylower(pk[ipk++], tab3[l].nome);
@@ -981,9 +1015,9 @@ void printTable(char *tbl)
             {
                 strcpylower(btIndex[ibt++], tab3[l].nome);
             }
-
+ 
             printf("  %-17s |", tab3[l].nome);
-
+ 
             if (tab3[l].tipo == 'S')
                 printf(" %-8s(%d) |", " varchar", tab3[l].tam);
             else if (tab3[l].tipo == 'I')
@@ -992,9 +1026,9 @@ void printTable(char *tbl)
                 printf(" %-10s   |", " char");
             else if (tab3[l].tipo == 'D')
                 printf(" %-10s   |", " double");
-
+ 
             printf(" %-10s ", (tab3[l].chave == PK || tab3[l].chave == FK) ? "not null" : "null");
-
+ 
             printf("\n");
         }
         if (ipk || ibt)
@@ -1019,32 +1053,32 @@ void printTable(char *tbl)
                 printf("\t\"%s_%s_fkey\" FOREIGN KEY (%s) REFERENCES %s(%s)\n", tbl, refColumn[l], refColumn[l], fkTable[l], fkColumn[l]);
             }
         }
-
+ 
         printf("\n");
     }
 }
-
+ 
 void incrementaQtdIndice(char *nTabela)
 {
     FILE *dicionario = NULL;
     char tupla[TAMANHO_NOME_TABELA];
     memset(tupla, '\0', TAMANHO_NOME_TABELA);
     int qt = 0, offset = 0;
-
+ 
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_object.dat");
-
+ 
     if ((dicionario = fopen(directory, "r+b")) == NULL)
     {
         printf("Erro ao abrir dicionário de dados.\n");
         return;
     }
-
+ 
     while (fgetc(dicionario) != EOF)
     {
         fseek(dicionario, -1, 1);
-
+ 
         fread(tupla, sizeof(char), TAMANHO_NOME_TABELA, dicionario); // Lê somente o nome da tabela
         if (strcmp(tupla, nTabela) == 0)
         {
@@ -1063,30 +1097,30 @@ void incrementaQtdIndice(char *nTabela)
     }
     printf("Erro ao atualizar dicionário de dados.\n");
 }
-
+ 
 void adicionaBT(char *nomeTabela, char *nomeAtrib)
 {
     int cod;
     char directory[LEN_DB_NAME_IO];
     strcpy(directory, connected.db_directory);
     strcat(directory, "fs_schema.dat");
-
+ 
     char atrib[TAMANHO_NOME_CAMPO];
     memset(atrib, '\0', TAMANHO_NOME_CAMPO);
-
+ 
     FILE *schema = fopen(directory, "r+b"); // Abre o arquivo de esquemas de tabelas.
-
+ 
     if (schema == NULL)
     {
         printf("Erro ao abrir esquema da tabela.\n");
         return;
     }
     struct fs_objects objeto = leObjeto(nomeTabela);
-
+ 
     while (fgetc(schema) != EOF)
     { // Varre o arquivo ate encontrar todos os campos com o codigo da tabela.
         fseek(schema, -1, 1);
-
+ 
         if (fread(&cod, sizeof(int), 1, schema))
         { // Le o codigo da tabela.
             if (cod == objeto.cod)
@@ -1113,7 +1147,7 @@ void adicionaBT(char *nomeTabela, char *nomeAtrib)
             }
         }
     }
-
+ 
     printf("Erro ao abrir o esquema da tabela \"%s\".\n", nomeTabela);
 }
 /* NÃO IMPLEMENTADO: a ideia era dar o free de maneira correta nas listas alocadas ao longo
@@ -1121,12 +1155,12 @@ void adicionaBT(char *nomeTabela, char *nomeAtrib)
  * não tivemos tempo ágil para implementar uma solução livre de erros e preferimos deixar
  * dessa maneira.
  */
-
+ 
 void freeTp_table(tp_table **tabela, int n)
 {
     // free(tabela);
 }
-
+ 
 void freeTable(table *tabela)
 {
     if (tabela != NULL)
@@ -1135,7 +1169,7 @@ void freeTable(table *tabela)
         // free(tabela);
     }
 }
-
+ 
 void freeColumn(column *colunas)
 {
     if (colunas != NULL)
@@ -1143,3 +1177,4 @@ void freeColumn(column *colunas)
         // free(colunas);
     }
 }
+ 
