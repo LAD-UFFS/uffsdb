@@ -1032,20 +1032,12 @@ void op_delete(Lista *toDeleteTuples, char *tabelaName)
         }
         // aqui realmente ocorre a exclusão
         pagina->data[t->offset] = 1; // marca a tupla como deletada
-        // TEMOS QUE AJUSTAR:
-        // buffer->db = 1; //marca a página como modificada
-        bm_despinarPagina(pagina);
         pagina->nrec--;
+        bm_marcarDirtyBit(pagina); // marca TODA página alterada como modificada, não só a última; senão as exclusões dos blocos anteriores se perdem quando a página sai do buffer ou no exit
+        bm_despinarPagina(pagina);
         countDeletedTuples++;
     }
 
-    // write the last buffer
-    if (pagina != NULL)
-    { // se sobrou alguma página carregada na memória no final do laço, ele força a gravação dela no disco para garantir que a última exclusão seja salva
-        bm_marcarDirtyBit(pagina);
-        bm_despinarPagina(pagina);
-        // writeBufferToDisk(pagina, &objeto);
-    }
     printf("DELETED %d %s\n", countDeletedTuples, (countDeletedTuples != 1) ? "rows" : "row");
     bm_printHeaderBufferPool();
 }
