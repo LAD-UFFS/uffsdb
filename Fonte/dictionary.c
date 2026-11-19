@@ -773,8 +773,10 @@ int finalizaTabela(table *t)
 // INSERE NA TABELA
 column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
 {
-    column *e = (column *)uffslloc(sizeof(column));
-    if (e == NULL)
+column *e = (column *)uffslloc(sizeof(column));
+
+
+if (e == NULL)
         return ERRO_DE_ALOCACAO;
     e->next = NULL;
 
@@ -784,26 +786,34 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
     // cd /home/uffs/uffsdb/Fonte && make clean && make 2>&1
     // adicionamos isso:
     int nTam;
-    if (tipo == 'S')
-    {
-        // printf("é string");
-        nTam = tam;
-    }
-    else
-    {
-        // printf("não string");
-        if (tipo == 'I')
-        {
-            // printf("inteiro");
-            long ajuda = (long)strtol(valorCampo, NULL, 10);
 
-            if (ajuda > INT32_MAX)
-            { // INT32_MAX é o tamanho limite de 32 bits do C
-                printf("ERROR: The integer exceeded the size limite 32 bits\n");
-            }
-            nTam = sizeof(ajuda);
-        }
+if (tipo == 'S' || tipo == 'C')
+{
+    nTam = tam;
+}
+else if (tipo == 'I')
+{
+    long ajuda = strtol(valorCampo, NULL, 10);
+
+    if (ajuda > INT32_MAX || ajuda < INT32_MIN)
+    {
+        printf("ERROR: The integer exceeded the size limit of 32 bits\n");
+        //return ERRO_DE_PARAMETRO;
+        return NULL;
     }
+
+    nTam = sizeof(int);
+}
+else if (tipo == 'D')
+{
+    nTam = strlen(valorCampo);
+}
+else
+{
+    printf("ERROR: Unsupported column type '%c'\n", tipo);
+    //return ERRO_DE_PARAMETRO;
+    return NULL;    
+}
 
     int n = strlen(nomeCampo) + 1;
 
@@ -826,7 +836,10 @@ column *insereValor(table *tab, column *c, char *nomeCampo, char *valorCampo)
     // comentamos isso:
     // int nTam = (tipo == 'S') ? tam : strlen(valorCampo); // é uma string? se sim, recebe tam; se não, usa o tamanho real digitado
 
-    e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam + 1));
+size_t tamanhoAlocacao = sizeof(char) * (nTam + 1);
+
+e->valorCampo = (char *)uffslloc(tamanhoAlocacao);    
+//e->valorCampo = (char *)uffslloc(sizeof(char) * (nTam + 1));
     if (e->valorCampo == NULL)
     {
         return ERRO_DE_ALOCACAO;
