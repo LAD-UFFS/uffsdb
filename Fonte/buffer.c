@@ -116,7 +116,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
 
     // tp_pagina *pagina = getBlock((unsigned int)page, directory);
     tp_pagina *pagina = bm_getBlock(objeto.cod, page, directory);
-    DEBUG_PRINT("getPage: buscando bloco %d da tabela '%s'\n", page, objeto.nome);
+    DEBUG_PRINT("getPage: buscando bloco %d da tabela '%s'", page, objeto.nome);
 
     if (pagina == NULL || pagina == ERRO_PARAMETRO)
         return ERRO_PARAMETRO;
@@ -174,7 +174,7 @@ PageResult *getPage(tp_table *campos, struct fs_objects objeto, int page)
     pg->tuplas = tuplas;
     pg->nrec = indiceTupla;
 
-    DEBUG_PRINT("getPage: bloco %d da tabela '%s' tem %d tupla(s)\n", page, objeto.nome, indiceTupla);
+    DEBUG_PRINT("getPage: bloco %d da tabela '%s' tem %d tupla(s)", page, objeto.nome, indiceTupla);
 
     return pg; // Retorna a 'page' do buffer
 }

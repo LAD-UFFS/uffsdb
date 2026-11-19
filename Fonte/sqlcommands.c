@@ -662,7 +662,7 @@ int finalizaInsert(char *nome, column *c, int tamTupla)
     // fwrite(buffer, sizeof(tp_pagina), 1, dados);
     bm_marcarDirtyBit(pagina); // ao invés de escrevermos a página no disco, APENAS marcamos a página como MODIFICADA no buffer pool, pois se ela estiver marcada como modificada, se tudo der certo, uma hora hora ela vai pro disco // (criei uma função pois achei que seria mais fácil, já que fazemos isso em vários lugares no código)
     bm_despinarPagina(pagina);
-    DEBUG_PRINT("INSERT - Block size written in file: %d", sizeof(tp_pagina));
+    DEBUG_PRINT("INSERT - Block size written in file: %zu", sizeof(tp_pagina));
 
     /*printf("DEPOIS DO INSERT\n");
 
