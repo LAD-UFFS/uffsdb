@@ -162,6 +162,57 @@ void updateSchema(struct fs_objects *objeto)
 }
 
 ////
+static int proximoCodigoTabela(void)
+{
+    FILE *dicionario;
+
+    char nome[TAMANHO_NOME_TABELA];
+    char nArquivo[TAMANHO_NOME_ARQUIVO];
+
+    int cod;
+    int qtdCampos;
+    int qtdIndice;
+    int maiorCod = 0;
+
+    int16_t ultimoBlocoComDados;
+
+    char directory[LEN_DB_NAME_IO];
+    strcpy(directory, connected.db_directory);
+    strcat(directory, "fs_object.dat");
+
+    dicionario = fopen(directory, "rb");
+
+    // Se ainda não existe nenhuma tabela, começa pelo código 1
+    if (dicionario == NULL)
+        return 1;
+
+    while (fread(nome, sizeof(nome), 1, dicionario) == 1)
+    {
+        if (fread(&cod, sizeof(cod), 1, dicionario) != 1)
+            break;
+
+        if (fread(nArquivo, sizeof(nArquivo), 1, dicionario) != 1)
+            break;
+
+        if (fread(&qtdCampos, sizeof(qtdCampos), 1, dicionario) != 1)
+            break;
+
+        if (fread(&qtdIndice, sizeof(qtdIndice), 1, dicionario) != 1)
+            break;
+
+        if (fread(&ultimoBlocoComDados,
+                  sizeof(ultimoBlocoComDados), 1, dicionario) != 1)
+            break;
+
+        if (cod > maiorCod)
+            maiorCod = cod;
+    }
+
+    fclose(dicionario);
+
+    return maiorCod + 1;
+}
+////
 int quantidadeTabelas()
 {
 
@@ -711,7 +762,7 @@ int finalizaTabela(table *t)
     FILE *esquema, *dicionario;
     tp_table *aux;
     int qtdIndice = 0;
-    int codTbl = quantidadeTabelas() + 1, qtdCampos = 0; // Conta a quantidade de tabelas já no dicionario e soma 1 no codigo dessa nova tabela.
+    int codTbl = proximoCodigoTabela(), qtdCampos = 0; // Conta a quantidade de tabelas já no dicionario e soma 1 no codigo dessa nova tabela.
     char nomeArquivo[TAMANHO_NOME_ARQUIVO];
     memset(nomeArquivo, 0, TAMANHO_NOME_ARQUIVO);
 

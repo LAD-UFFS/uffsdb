@@ -1085,6 +1085,9 @@ char identificaTipoValor(char *valor)
     if (!valor || strlen(valor) == 0)
         return 'N'; // NULL
 
+    if (strcmp(valor, "-") == 0)
+    return 'S';
+
     // Verifica se é um único caractere não-numérico
     if (strlen(valor) == 1 && !isdigit(valor[0]) && valor[0] != '-')
         return 'C';
