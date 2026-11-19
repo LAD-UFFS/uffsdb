@@ -75,7 +75,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     int indice_disponivel = getSlot(&key);
   
     if (indice_disponivel != -1 ){
-        DEBUG_PRINT("bm_getBlock: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer\n", id_bloco, id_tabela, filename);
+        DEBUG_PRINT("bm_getBlock: bloco %d da tabela com id %d e filename %s JÁ ESTÁ no buffer", id_bloco, id_tabela, filename);
         return &bp.paginas[indice_disponivel]; // página já está no buffer
     }
 
@@ -92,7 +92,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
     if (indice_disponivel == -1)
     {
         // printf("ERROR: buffer pool cheio\n");
-        DEBUG_PRINT("BUFFER POOL CHEIO\n");
+        DEBUG_PRINT("BUFFER POOL CHEIO");
 
         if (bm_writeBufferToDisk() == NULL)
             return NULL;
@@ -101,7 +101,7 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
         // exit(1);
     }
 
-    DEBUG_PRINT("bm_getBlock: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco\n", id_bloco, id_tabela, filename);
+    DEBUG_PRINT("bm_getBlock: bloco %d da tabela com id %d e filename %s NÃO ESTÁ no buffer e será lido do disco", id_bloco, id_tabela, filename);
     tp_pagina *bloco = getBlock((unsigned int)id_bloco, filename);
     // nao temos diretorios mapeados com index por enquanto
     setSlot(&key, indice_disponivel);
@@ -119,18 +119,18 @@ tp_pagina *bm_getBlock(int id_tabela, int id_bloco, char *filename)
 
 void bm_printHeaderBufferPool()
 {
-    DEBUG_PRINT("\n------ Header Buffer Pool ------\n");
-    DEBUG_PRINT("total: %d | ocupados: %d | livres: %d\n\n", bp.qtd_paginas_total, bp.qtd_paginas_ocupadas, bp.qtd_paginas_desocupadas);
-    DEBUG_PRINT("slot       id_tabela  bloco    dp      pc\n");
+    DEBUG_PRINT("\n------ Header Buffer Pool ------");
+    DEBUG_PRINT("total: %d | ocupados: %d | livres: %d\n", bp.qtd_paginas_total, bp.qtd_paginas_ocupadas, bp.qtd_paginas_desocupadas);
+    DEBUG_PRINT("slot       id_tabela  bloco    dp      pc");
     for (int i = 0; i < bp.qtd_paginas_total; i++)
     {
         if (bp.header[i].id_tabela == -1)
         {
             continue; // pulando slots livres
         }
-        DEBUG_PRINT("%d          %d          %d        %d       %d\n", i, bp.header[i].id_tabela, bp.header[i].bloco_da_tabela, bp.header[i].db, bp.header[i].pc);
+        DEBUG_PRINT("%d          %d          %d        %d       %d", i, bp.header[i].id_tabela, bp.header[i].bloco_da_tabela, bp.header[i].db, bp.header[i].pc);
     }
-    DEBUG_PRINT("---------------------------------\n");
+    DEBUG_PRINT("---------------------------------");
 }
 
 // função intermediária do WriteBufferToDisk (ele não pode ser acessado diretamente)
@@ -144,7 +144,7 @@ tp_pagina *bm_writeBufferToDisk()
 
     if (indice_pagina_para_subtituir == -1)
     {
-        DEBUG_PRINT("NAO HA PAGINAS NO BUFFER PARA SUBSTITUIR\n");
+        DEBUG_PRINT("NAO HA PAGINAS NO BUFFER PARA SUBSTITUIR");
         return NULL;
     }
 
@@ -184,7 +184,7 @@ int algoritmo_clock()
         else if (bp.header[pagina_da_vez_para_sair].db == 0 && bp.header[pagina_da_vez_para_sair].pc == 0)
         { // se dirty bit e pin count da pagina que vai sair é 0, é pq não sofreu alterações e só tira a página
 
-            DEBUG_PRINT("Pagina de indice %d foi escolhida para sair\n", pagina_da_vez_para_sair);
+            DEBUG_PRINT("Pagina de indice %d foi escolhida para sair", pagina_da_vez_para_sair);
             indice_pagina = pagina_da_vez_para_sair;
             pagina_da_vez_para_sair++;
 
@@ -193,7 +193,7 @@ int algoritmo_clock()
         else if (bp.header[pagina_da_vez_para_sair].db == 1 && bp.header[pagina_da_vez_para_sair].pc == 0)
         { // if dirty bit da pagina que vai sair é 1 e e pin count  é 0, tem que escrveer no disco antes de tirar a págian
 
-            DEBUG_PRINT("Pagina de indice %d foi escolhida para sair\n", pagina_da_vez_para_sair);
+            DEBUG_PRINT("Pagina de indice %d foi escolhida para sair", pagina_da_vez_para_sair);
             indice_pagina = pagina_da_vez_para_sair;
             pagina_da_vez_para_sair++;
 
@@ -222,7 +222,7 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
 
     if (indice_disponivel == -1)
     {
-        DEBUG_PRINT("ERROR: buffer pool cheio\n");
+        DEBUG_PRINT("ERROR: buffer pool cheio");
         if (bm_writeBufferToDisk() == NULL)
         {
             return NULL;
@@ -245,7 +245,7 @@ tp_pagina *bm_novaPaginaNoBuffer(int id_tabela, int id_bloco, char *filename)
     bp.qtd_paginas_ocupadas++;
     bp.qtd_paginas_desocupadas--;
 
-    DEBUG_PRINT("bm_novaPaginaNoBuffer: novo bloco (bloco %d) da tabela %d está sendo criado no buffer pool no slot %d\n", id_bloco, id_tabela, indice_disponivel);
+    DEBUG_PRINT("bm_novaPaginaNoBuffer: novo bloco (bloco %d) da tabela %d está sendo criado no buffer pool no slot %d", id_bloco, id_tabela, indice_disponivel);
 
     return &bp.paginas[indice_disponivel];
 }
@@ -277,7 +277,7 @@ void bm_despinarPagina(tp_pagina *pagina) {
 void bm_gravarTodasAsPaginasDoBufferNoDisco()
 {
 
-    printf("\nbm_gravarTodasAsPaginasDoBufferNoDisco: como o programa terminou, gravando páginas sujas no disco...\n");
+    DEBUG_PRINT("bm_gravarTodasAsPaginasDoBufferNoDisco: como o programa terminou, gravando páginas sujas no disco...");
 
     for (int i = 0; i < bp.qtd_paginas_total; i++)
     {
@@ -288,17 +288,17 @@ void bm_gravarTodasAsPaginasDoBufferNoDisco()
 
         FILE *arquivo_inteiro_tabela = fopen(bp.header[i].filename, "r+b");
         if (!arquivo_inteiro_tabela) {
-            DEBUG_PRINT("ERRO: bm_gravarTodasAsPaginasDoBufferNoDisco: não foi possível abrir o arquivo %s\n", bp.header[i].filename);
+            DEBUG_PRINT("ERRO: bm_gravarTodasAsPaginasDoBufferNoDisco: não foi possível abrir o arquivo %s", bp.header[i].filename);
             continue;
         }
         fseek(arquivo_inteiro_tabela, (long)bp.paginas[i].id * sizeof(tp_pagina), SEEK_SET);
         fwrite(&bp.paginas[i], sizeof(tp_pagina), 1, arquivo_inteiro_tabela);
         fclose(arquivo_inteiro_tabela);
 
-        DEBUG_PRINT("bm_gravarTodasAsPaginasDoBufferNoDisco: bloco %d da tabela com id/código %d gravado no arquivo %s\n", bp.header[i].bloco_da_tabela, bp.header[i].id_tabela, bp.header[i].filename);
+        DEBUG_PRINT("bm_gravarTodasAsPaginasDoBufferNoDisco: bloco %d da tabela com id/código %d gravado no arquivo %s", bp.header[i].bloco_da_tabela, bp.header[i].id_tabela, bp.header[i].filename);
 
         // será que tem quer zerar por completo o buffer também? Aqui que não, né? Porque é uma variável e ela é automaticamente excluida quando o programa termina
         bp.header[i].db = 0; // fazendo isso só por lógica, mas nem precisa eu acho // colocando o dirty bit como 0, porque agora a página foi colocada no disco, ou seja, a página que está no buffer agora está igual ao bloco que está no disco
     }
-    DEBUG_PRINT("bm_gravarTodasAsPaginasDoBufferNoDisco: todas as páginas com dirty bit igual a 1 foram gravadas no disco\n");
+    DEBUG_PRINT("bm_gravarTodasAsPaginasDoBufferNoDisco: todas as páginas com dirty bit igual a 1 foram gravadas no disco");
 }
