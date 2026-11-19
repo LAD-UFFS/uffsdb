@@ -26,5 +26,8 @@ void bm_marcarDirtyBit(tp_pagina *pagina);
 // para despinar a página (pc=0):
 void bm_despinarPagina(tp_pagina *pagina);
 
+// descarta do buffer todas as páginas de uma tabela excluída
+void bm_descartarPaginasDaTabela(int id_tabela);
+
 // gravando no disco todas as páginas com db=1 (depois do exit)
 void bm_gravarTodasAsPaginasDoBufferNoDisco();

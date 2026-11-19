@@ -1617,6 +1617,7 @@ int excluirTabela(char *nomeTabela)
     strcpy(directory, connected.db_directory);
     strcat(directory, str);
     remove(directory); // disco
+    bm_descartarPaginasDaTabela(objeto.cod); // buffer
 
     printf("DROP TABLE\n");
     return SUCCESS;

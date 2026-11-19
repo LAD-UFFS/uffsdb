@@ -273,6 +273,31 @@ void bm_despinarPagina(tp_pagina *pagina) {
     }
 }
 
+// tira do buffer pool todas as páginas da tabela sem gravar no disco (usada no DROP TABLE)
+void bm_descartarPaginasDaTabela(int id_tabela)
+{
+    for (int i = 0; i < bp.qtd_paginas_total; i++)
+    {
+        if (bp.header[i].id_tabela != id_tabela)
+            continue;
+
+        for (int j = 0; j < 2 * PAGES; j++)
+        {
+            if (bp.hash_directory[j].buffer_id == i)
+                bp.hash_directory[j].buffer_id = HASHDELETED;
+        }
+
+        bp.paginas[i].nrec = 0;
+        bp.paginas[i].position = 0;
+        bp.header[i].id_tabela = -1;
+        bp.header[i].bloco_da_tabela = -1;
+        bp.header[i].db = 0;
+        bp.header[i].pc = 0;
+        bp.qtd_paginas_ocupadas--;
+        bp.qtd_paginas_desocupadas++;
+    }
+}
+
 // grava no disco todas as páginas com db=1 no exit, quando o programa terminar
 void bm_gravarTodasAsPaginasDoBufferNoDisco()
 {
