@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -272,10 +273,19 @@ char getMode() {
     return GLOBAL_PARSER.mode;
 }
 
+void handle_sig(int sig) {
+    DEBUG_PRINT("recebido sinal: %d, encerrando com quit()", sig);
+    quit(0);
+}
+
 int interface() {
     pthread_t pth;
     pthread_create(&pth, NULL, (void*)clearGlobalStructs, NULL);
     pthread_join(pth, NULL);
+
+    signal(SIGINT, handle_sig);
+    signal(SIGQUIT, handle_sig);
+    signal(SIGTSTP, handle_sig);
 
     char prompt[LEN_DB_NAME + 4]; // 3 para "=# " +1 para \0
     Lista *resultado;
