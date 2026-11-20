@@ -325,7 +325,7 @@ int interface() {
                             break;
                         case OP_UPDATE:
                             resultado = handleTableOperation(&QUERY, 'u');
-                            if(resultado->prim && resultado->tam > 0){
+                            if(resultado && resultado->prim && resultado->tam > 0){
                                 op_update(resultado, &QUERY);
                             }else printf("UPDATED 0 rows\n");
                             break;
