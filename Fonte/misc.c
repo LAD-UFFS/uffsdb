@@ -172,8 +172,9 @@ void help()
     printf("\t...][,\t\t\t\t\t     {int, integer, double, varchar(SIZE), char}.\n");
     printf("\tcolumnN type [attribute]]\t\t  2. Um ou mais atributos opcionais, representados por 'attribute', que podem incluir:\n");
     printf(");\t\t\t\t\t\t     • PRIMARY KEY: Define a coluna como chave primária (PK)\n");
-    printf("\t\t\t\t\t\t     • REFERENCES NOME(COLUMN): Define a coluna como uma chave estrangeira (FK),\n");
-    printf("\t\t\t\t\t\t     especificando a tabela (NOME) e a coluna (COLUMN) que está sendo referenciada.\n");
+    printf("\t\t\t\t\t\t     • REFERENCES NOME(COLUMN) ou FOREIGN KEY (COLUMN) REFERENCES NOME(COLUMN):\n");
+    printf("\t\t\t\t\t\t       Define uma chave estrangeira (FK), especificando a tabela (NOME) e a\n");
+    printf("\t\t\t\t\t\t       coluna (COLUMN) que está sendo referenciada.\n");
     printf("\t\t\t\t\t\t  Não é possível definir restrições de integridade (como not null, unique ou\n");
     printf("\t\t\t\t\t\t  constraint para pk).\n");
     printf("\nDROP TABLE NOME;\t\t\t\t- Exclui uma tabela do banco de dados\n");

@@ -129,6 +129,14 @@ void setColumnFKTableCreate(char **nome);
  */
 void setColumnFKColumnCreate(char **nome);
 
+/* Funções para suporte a FOREIGN KEY como cláusula separada no CREATE TABLE
+ */
+void setFKSourceColumn(char **nome);
+void setFKTableCreate(char **nome);
+void setFKColumnCreate(char **nome);
+void addForeignKeySeparate();
+int applyForeignKeys();
+
 /* Reinicializa todas as propriedades da estrutura que armazena
  * os dados identificados pelos tokens SQL.
  */

@@ -39,6 +39,7 @@
 (?i:DOUBLE)						return DOUBLE;
 (?i:PRIMARY)					return PRIMARY;
 (?i:KEY)						return KEY;
+(?i:FOREIGN)					return FOREIGN;
 (?i:REFERENCES)					return REFERENCES;
 (?i:DATABASE)					return DATABASE;
 (?i:DROP)						return DROP;
